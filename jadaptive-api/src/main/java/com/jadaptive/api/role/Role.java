@@ -3,6 +3,7 @@ package com.jadaptive.api.role;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 
 import com.jadaptive.api.entity.ObjectScope;
 import com.jadaptive.api.entity.ObjectType;
@@ -65,7 +66,7 @@ public class Role extends NamedUUIDEntity {
 			searchable = true,
 			references = "users", view = USERS_VIEW)
 	@ExcludeView(values = FieldView.TABLE)
-	Collection<User> users = new HashSet<>();
+	Set<User> users = new HashSet<>();
 	
 	@ObjectField(type = FieldType.TEXT, hidden = true)
 	String versionHash;
@@ -106,11 +107,11 @@ public class Role extends NamedUUIDEntity {
 		this.allUsers = allUsers;
 	}
 
-	public Collection<User> getUsers() {
+	public Set<User> getUsers() {
 		return users;
 	}
 
-	public void setUsers(Collection<User> users) {
+	public void setUsers(Set<User> users) {
 		this.users = users;
 	}
 

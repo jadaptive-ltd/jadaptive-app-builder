@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -222,7 +223,13 @@ public class DocumentHelper {
 
 	public static void buildCollectionDocuments(String name, ObjectField columnDefinition, Collection<?> values, Class<?> returnType, Map<String,Object> document) throws ParseException, ObjectException {
 		
-		List<Object> list = new ArrayList<>();
+		Collection<Object> list;
+		if(Set.class.isAssignableFrom(returnType)) {
+			list = new LinkedHashSet<>();
+		}
+		 else {
+			 list = new ArrayList<>();
+		}
 
 		for(Object value : values) {
 			if(Date.class.equals(value.getClass())) {
@@ -756,13 +763,25 @@ public class DocumentHelper {
 				} else if(Collection.class.isAssignableFrom(parameter.getType())) { 
 					ParameterizedType o = (ParameterizedType) parameter.getParameterizedType();
 					Class<?> type = (Class<?>) o.getActualTypeArguments()[0];
-					List<?> list = (List<?>) document.get(name);
+					Collection<?> list = (Collection<?>) document.get(name);
 					if(Objects.isNull(list)) {
-						m.invoke(obj, new ArrayList<>());
+						if(Set.class.isAssignableFrom(type)) {
+							m.invoke(obj, new LinkedHashSet<>());
+						}
+						else {
+							m.invoke(obj, new ArrayList<>());
+						}
 						continue;
 					}
 					if(UUIDEntity.class.isAssignableFrom(type)) {
-						Collection<UUIDEntity> elements = new ArrayList<>();	
+						
+						Collection<UUIDEntity> elements;
+						if(Set.class.isAssignableFrom((Class<?>)o.getRawType())) {
+							elements = new LinkedHashSet<>();
+						} else {
+							elements = new ArrayList<>();
+						}
+						
 						for(Object embedded : list) {
 							if(Objects.isNull(columnDefinition) || columnDefinition.type() == FieldType.OBJECT_EMBEDDED) {
 								Document embeddedDocument = (Document) embedded;
@@ -786,12 +805,22 @@ public class DocumentHelper {
 							}
 						}
 
+						try  {
 						m.invoke(obj, elements);
+						}
+						catch(IllegalArgumentException e) {
+							log.error("Failed to set collection field {} with value {} for {} uuid {}", name, list, resourceKey, uuid);
+							throw e;
+						}
 						
 					} else {
 						
 						if(list.isEmpty()) {
-							m.invoke(obj, new ArrayList<>());
+							if(Set.class.isAssignableFrom((Class<?>)o.getRawType())) {
+								m.invoke(obj, new LinkedHashSet<>());
+							} else {
+								m.invoke(obj, new ArrayList<>());
+							}
 						} else {
 							if(type.equals(String.class)) {
 								m.invoke(obj, buildStringCollection(columnDefinition, list));
@@ -994,7 +1023,7 @@ public class DocumentHelper {
 		}
 	}
 
-	private static Object buildStringCollection(ObjectField columnDefinition, List<?> list) {
+	private static Object buildStringCollection(ObjectField columnDefinition, Collection<?> list) {
 		Collection<String> v = new ArrayList<>();
 		for(Object item : list) {
 			v.add(checkForAndPerformDecryption(columnDefinition, item.toString()));
@@ -1011,7 +1040,7 @@ public class DocumentHelper {
 //		return v;
 //	}
 	
-	private static Object buildEnumCollection(List<?> items, Class<?> type) {
+	private static Object buildEnumCollection(Collection<?> items, Class<?> type) {
 
 		Collection<Enum<?>> v = new ArrayList<>();
 		for(Object item : items) {
@@ -1032,7 +1061,7 @@ public class DocumentHelper {
 		return v;		
 	}
 
-	private static Collection<Date> buildDateCollection(ObjectField columnDefinition, List<?> items) throws ParseException {
+	private static Collection<Date> buildDateCollection(ObjectField columnDefinition, Collection<?> items) throws ParseException {
 		Collection<Date> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Utils.parseDateTime(checkForAndPerformDecryption(columnDefinition, item.toString())));
@@ -1040,7 +1069,7 @@ public class DocumentHelper {
 		return v;
 	}
 
-	private static Collection<Double> buildDoubleCollection(ObjectField columnDefinition, List<?> items) {
+	private static Collection<Double> buildDoubleCollection(ObjectField columnDefinition, Collection<?> items) {
 		Collection<Double> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Double.parseDouble(checkForAndPerformDecryption(columnDefinition, item.toString())));
@@ -1048,7 +1077,7 @@ public class DocumentHelper {
 		return v;
 	}
 
-	private static Collection<Float> buildFloatCollection(ObjectField columnDefinition, List<?> items) {
+	private static Collection<Float> buildFloatCollection(ObjectField columnDefinition, Collection<?> items) {
 		Collection<Float> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Float.parseFloat(checkForAndPerformDecryption(columnDefinition, item.toString())));
@@ -1056,7 +1085,7 @@ public class DocumentHelper {
 		return v;
 	}
 
-	private static Collection<Long> buildLongCollection(ObjectField columnDefinition, List<?> items) {
+	private static Collection<Long> buildLongCollection(ObjectField columnDefinition, Collection<?> items) {
 		Collection<Long> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Long.parseLong(checkForAndPerformDecryption(columnDefinition, item.toString())));
@@ -1064,7 +1093,7 @@ public class DocumentHelper {
 		return v;
 	}
 
-	private static Collection<Integer> buildIntegerCollection(ObjectField columnDefinition, List<?> items) {
+	private static Collection<Integer> buildIntegerCollection(ObjectField columnDefinition, Collection<?> items) {
 		Collection<Integer> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Integer.parseInt(checkForAndPerformDecryption(columnDefinition, item.toString())));
@@ -1072,7 +1101,7 @@ public class DocumentHelper {
 		return v;
 	}
 
-	private static Collection<Boolean> buildBooleanCollection(ObjectField columnDefinition, List<?> items) {
+	private static Collection<Boolean> buildBooleanCollection(ObjectField columnDefinition, Collection<?> items) {
 		Collection<Boolean> v = new ArrayList<>();
 		for(Object item : items) {
 			v.add(Boolean.parseBoolean(checkForAndPerformDecryption(columnDefinition, item.toString())));
