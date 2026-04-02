@@ -9,8 +9,8 @@ import com.jadaptive.utils.Utils;
 
 public abstract class FormInputRender extends FieldInputRender {
 	
-	private boolean decorate = true;
-	Element input;
+	protected boolean decorate = true;
+	protected Element input;
 	
 	public FormInputRender(ObjectTemplate template, TemplateViewField field) {
 		super(field);

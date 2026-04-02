@@ -12,6 +12,7 @@ import org.apache.commons.io.IOUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import com.jadaptive.api.template.FieldTemplate;
 import com.jadaptive.api.template.TemplateViewField;
@@ -67,9 +68,13 @@ public abstract class FieldInputRender implements PageResources {
 	public Element elementForRole(Element parent, String role) {
 		return elementForRoleOr(parent, role).orElseThrow(() -> new IllegalStateException("No element with role:" + role + " in template."));
 	}
+	
+	public Elements elementsForRole(Element parent, String role) {
+		return parent.getElementsByAttributeValue("jad:role", role);
+	}
 
 	public Optional<Element> elementForRoleOr(Element parent, String role) {
-		return ofNullable(parent.getElementsByAttributeValue("jad:role", role).first());
+		return ofNullable(elementsForRole(parent, role).first());
 	}
 	
 	public void disableDecoration() {
@@ -100,6 +105,10 @@ public abstract class FieldInputRender implements PageResources {
 	
 	public void disableDescription() {
 		this.labelOnly = true;
+	}
+
+	public final void renderInput(Element rootElement, boolean readOnly, String... classes) {
+		renderInput(rootElement, null, readOnly, classes);
 	}
 	
 	public final void renderInput(Element rootElement, String value, boolean readOnly, String... classes) {

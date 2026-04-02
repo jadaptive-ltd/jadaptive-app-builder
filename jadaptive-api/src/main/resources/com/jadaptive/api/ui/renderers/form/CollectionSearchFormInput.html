@@ -1,0 +1,52 @@
+<html lang="en" xmlns:jad="https://jadaptive.com/jad">
+<body>
+	<div class="dropdown-form-field">
+		<label jad:role="label" class="form-label">Label</label>
+		<div jad:role="component" class="input-group position-relative">
+			<input data-bs-toggle="dropdown" jad:role="reference" type="hidden" /> 
+			<input jad:role="input" data-display="static" type="text" class="form-control filter-dropdown" aria-expanded="false" /> 
+			<span
+				class="input-group-text">
+				<a href="#" jad:role="toggle-menu" aria-expanded="false"><i class="fa-solid fa-search"></i></a>
+			</span>
+			<div jad:role="values" class="dropdown-menu dropdown-size"></div>
+		</div>
+		<small jad:role="help" class="form-text text-muted"></small>
+		<div class="row">
+			<div jad:role="table" class="col-md-12">
+				<div jad:role="empty-table" class="mt-2">
+					<em><span jad:bundle="userInterface" jad:i18n="emptyList.text" class="small text-muted"></span></em>
+				</div>
+			    <table class="w-100 collectionSearchTarget table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th jad:bundle="default" jad:i18n="name.name">Name</th>
+                            <th jad:bundle="default" jad:i18n="actions.name" class="remove-if-read-only">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody jad:role="items"></tbody>
+                </table>
+			</div>
+		</div>
+		
+		<template jad:role="value">
+		    <a href="#" class="dropdown-form-field-item dropdown-item"></a>
+		</template>
+		
+		<template jad:role="item">
+		    <tr>
+		    	<input jad:role="form-variable" type="hidden">
+		    	<input jad:role="form-variable-text" type="hidden">
+		    	<td>
+		    		<span jad:role="display-name" class="underline"></span>
+		    	</td>
+		    	<td jad:role="actions" class="remove-if-read-only">
+		    		<a href="#" class="collectionSearchDelete"><i class="fa-solid fa-fw fa-trash me-2"></i></a>
+		    		<a href="#" class="collectionSearchUp"><i class="fa-solid fa-fw fa-arrow-up me-2"></i></a>
+		    		<a href="#" class="collectionSearchDown"><i class="fa-solid fa-fw fa-arrow-down me-2"></i></a>
+		    	</td>
+		    </tr>
+		</template>
+	</div>
+</body>
+</html>

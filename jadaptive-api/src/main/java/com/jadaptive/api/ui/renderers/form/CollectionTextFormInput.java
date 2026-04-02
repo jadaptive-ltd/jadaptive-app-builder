@@ -1,113 +1,90 @@
 package com.jadaptive.api.ui.renderers.form;
 
+import static java.util.Optional.ofNullable;
+
 import java.util.Collection;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.nodes.Element;
 
 import com.jadaptive.api.template.ObjectTemplate;
 import com.jadaptive.api.template.TemplateViewField;
-import com.jadaptive.api.template.TemplateView;
-import com.jadaptive.api.ui.Html;
 
-public class CollectionTextFormInput {
+public class CollectionTextFormInput extends TextFormInput {
 
-	Element table;
 	protected ObjectTemplate template;
-	protected TemplateViewField field;
-	Element input;
-	
-	public CollectionTextFormInput(ObjectTemplate template, TemplateViewField field) {
-		this.template = template;
-		this.field = field;
+	private Collection<String> values;
+
+	public CollectionTextFormInput(ObjectTemplate template, TemplateViewField field, Collection<String> values) {
+		super(template, field);
+		this.values = values;
 	}
 
-	public void renderInput(TemplateView panel, Element rootElement, 
-			Collection<String> selectedValues, boolean readOnly) {
+	@Override
+	protected void onRender(Element rootElement, String defaultValue, boolean readOnly, String... classes) {
 
-		Element div;
-		rootElement.removeClass("mb-3");
-		rootElement.appendChild(div = new Element("div").addClass("row collectionTextInput mb-3")
-				.attr("data-resourcekey", field.getResourceKey())
-				.appendChild(input = new Element("div")
-						.addClass("col-12")
-				.appendChild(new Element("label")
-						.attr("for", field.getFormVariable())
-						.addClass("form-label")
-						.attr("jad:bundle", field.getBundle())
-						.attr("jad:i18n", String.format("%s.name", field.getResourceKey())))));
+		var container = elementForRole(rootElement, "container");
+		container.dataset().put("resource-key", resourceKey);
+
+		/* Label */
+		ofNullable(elementsForRole(container, "label").first()).ifPresent(lbl -> {
+			if (decorate) {
+				lbl.removeAttr("jad:role");
+				lbl.attr("for", getFormVariable());
+				lbl.attr("jad:bundle", getBundle());
+				lbl.attr("jad:i18n", String.format("%s.name", getResourceKey()));
+			} else {
+				lbl.remove();
+			}
+		});
+
+		/* Help */
+		elementForRoleOr(rootElement, "help").ifPresent(dsc -> {
+			if (decorate) {
+				dsc.removeAttr("jad:role");
+				dsc.attr("jad:bundle", getBundle());
+				dsc.attr("jad:i18n", String.format("%s.desc", getResourceKey()));
+			} else {
+				dsc.remove();
+			}
+		});
+
+		/* Item Table */
+
+		var tableContainer = elementForRole(rootElement, "table");
+		tableContainer.attr("id", formVariable);
 		
-		if(!readOnly) {
-				input.appendChild(new Element("div")
-						.attr("id", String.format("%sDropdown", field.getResourceKey()))
-						.addClass("input-group position-relative dropdown")
-					.appendChild(input = new Element("input")
-							.attr("id", String.format("%sText", field.getResourceKey()))
-							.addClass("form-control collectionTextInputText")
-							.attr("autocomplete", "off")
-							.attr("type", "text"))
-					.appendChild(new Element("span")
-							.addClass("input-group-text collectionTextAdd")
-						.appendChild(new Element("i")
-								.attr("class", "fa-solid fa-plus")))
-					.appendChild(new Element("div")
-							.addClass("dropdown-menu dropdown-size")
-							.attr("aria-labelledby", String.format("%sDropdown", field.getResourceKey()))));
+		var items = rootElement.getElementsByAttributeValue("jad:role", "items").first();
+		if (values.size() > 0) {
+			rootElement.getElementsByAttributeValue("jad:role", "empty-table").addClass("d-none");
+			var template = rootElement.getElementsByAttributeValue("jad:role", "item").get(0);
+			for (var value : values) {
+				Element row = template.firstElementChild().clone().removeAttr("jad:role").appendTo(items);
+
+				row.getElementsByAttributeValue("jad:role", "form-variable").first().attr("name", formVariable)
+						.attr("value", value).attr("id", formVariable);
+
+				Element displayName = row.getElementsByAttributeValue("jad:role", "display-name").first();
+				displayName.text(StringUtils.defaultIfBlank(value, "-"));
+			}
+		} else {
+			rootElement.getElementsByAttributeValue("jad:role", "table").select("table").first().addClass("d-none");
 		}
-		
-		Element tr;
-		Element table;
-		
-		div.appendChild(new Element("div")
-						.addClass("row")
-					.appendChild(new Element("div")
-							.attr("id", field.getFormVariable())
-							.addClass("col-md-12")
-							.appendChild(table = new Element("table")
-									.addClass("w-100 collectionSearchTarget table table-sm table-striped")
-									.appendChild(new Element("thead")
-										.appendChild(tr = new Element("tr")
-												.appendChild(new Element("td")
-														.attr("jad:bundle","default")
-														.attr("jad:i18n", "name.name")))
-										.appendChild(table = new Element("tbody"))))
-							))
-					.appendChild(new Element("div")
-							.addClass("row")
-						.appendChild(new Element("div")
-								.addClass("col-md-10")
-								.appendChild(new Element("small")
-										.addClass("text-muted")
-										.attr("jad:bundle", field.getBundle())
-										.attr("jad:i18n", String.format("%s.desc", field.getResourceKey())))));
-		if(!readOnly) {
-			tr.appendChild(new Element("td")
-					.attr("jad:bundle","default")
-					.attr("jad:i18n", "actions.name"));
+
+		/* Clean up */
+		if(readOnly) {
+			rootElement.getElementsByClass("remove-if-read-only").remove();
 		}
-		
-		if(selectedValues.isEmpty())
-			table.addClass("d-none");
-		
-		for(String value : selectedValues) {
-			
-			table.appendChild(tr = new Element("tr")
-					.appendChild(new Element("input")
-							.attr("type", "hidden")
-							.attr("name", field.getResourceKey())
-							.attr("value", value))
-					.appendChild(new Element("td")
-							.appendChild(Html.span(value, "underline"))));
-			
-			if(!readOnly) {
-					tr.appendChild(new Element("td")
-							.appendChild(Html.a("#", "collectionSearchDelete")
-									.appendChild(Html.i("fa-solid", "fa-fw", "fa-trash", "me-2"))));		
+		else {
+
+			var component = elementForRole(rootElement, "component");
+			component.attr("id", String.format("%sTextFormInput", resourceKey));
+
+			input = elementForRole(component, "input");
+			if (!disableIDAttribute) {
+				component.attr("id", String.format("%sText", resourceKey));
 			}
 		}
-	}
-	
-	public Element getInputElement() {
-		return input;
-	}
 
+	}
 }

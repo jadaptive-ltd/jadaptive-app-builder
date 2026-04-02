@@ -18,8 +18,9 @@ public class DropdownFormInput extends FieldInputRender {
 	private Element componentElement;
 	private Element dropdownMenu;
 	private Element dropdownInput;
-	private Element nameElement;
 	private Element valueElement;
+	
+	protected Element nameElement;
 
 	public DropdownFormInput(TemplateViewField field) {
 		super(field);
@@ -53,9 +54,7 @@ public class DropdownFormInput extends FieldInputRender {
 		valueElement.attr("name", getFormVariableWithParents());
 		valueElement.addClass(resourceKey);
 
-		nameElement = elementForRole(componentElement, "input");
-		nameElement.attr("name", getFormVariableWithParents() + "Text");
-		nameElement.addClass(resourceKey + "Text");
+		configureInputElement();
 
 		elementForRoleOr(componentElement, "help").ifPresent(dsc -> {
 			if(decorate) {
@@ -69,6 +68,7 @@ public class DropdownFormInput extends FieldInputRender {
 		});
 
 		if(!disableIDAttribute) {
+			componentElement.attr("id", String.format("%sComponent", getResourceKey()));
 			dropdownInput.attr("id", String.format("%sDropdown", getResourceKey()));
 			valueElement.attr("id", resourceKey);
 			nameElement.attr("id", String.format("%sText", getResourceKey()));
@@ -76,6 +76,7 @@ public class DropdownFormInput extends FieldInputRender {
 
 		if(readOnly) {
 			nameElement.attr("disabled", "disabled");
+			rootElement.getElementsByClass("remove-if-read-only").remove();
 		}
 
 	}
@@ -104,7 +105,7 @@ public class DropdownFormInput extends FieldInputRender {
 		valueElement.val(selected.name());
 	}
 
-	public void renderValues(Collection<String> values, String defaultValue) {
+	public void renderValues(Collection<String> values, String defaultValue, boolean readOnly) {
 
 		setupValues(false);
 		
@@ -119,7 +120,7 @@ public class DropdownFormInput extends FieldInputRender {
 			}
 		}
 
-		nameElement.val(processEnumName(selected));
+		nameElement.val(selected);
 		valueElement.val(String.valueOf(selected));
 	}
 
@@ -212,6 +213,12 @@ public class DropdownFormInput extends FieldInputRender {
 			nameElement.val(selected.getName());
 			valueElement.val(selected.getValue());
 		}
+	}
+
+	protected void configureInputElement() {
+		nameElement = elementForRole(componentElement, "input");
+		nameElement.attr("name", getFormVariableWithParents() + "Text");
+		nameElement.addClass(resourceKey + "Text");
 	}
 
 	private void setupValues(boolean readOnly) {

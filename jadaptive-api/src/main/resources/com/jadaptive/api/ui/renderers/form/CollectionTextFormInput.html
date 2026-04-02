@@ -1,0 +1,51 @@
+<html lang="en" xmlns:jad="https://jadaptive.com/jad">
+<body>
+	<div class="collection-text-field">
+		<div jad:role="container" class="row collectionTextInput mb-3">
+			<div class="col-12">
+				<label jad:role="label" class="form-label">Label</label>
+				<div jad:role="component" class="input-group position-relative remove-if-read-only">
+					<input jad:role="input" type="text"
+						class="form-control collectionTextInputText"
+						type="text" /> 
+					<span class="input-group-text collectionTextAdd">
+						<i class="fa-solid fa-plus"></i>
+					</span>
+				</div>
+			</div>
+			<small jad:role="help" class="form-text text-muted"></small>
+		</div>
+		
+		<div class="row">
+			<div jad:role="table" class="col-md-12">
+				<div jad:role="empty-table" class="mt-2">
+					<em><span jad:bundle="userInterface" jad:i18n="emptyList.text" class="small text-muted"></span></em>
+				</div>
+			    <table class="w-100 collectionSearchTarget table table-sm table-striped">
+	                   <thead>
+	                       <tr>
+	                           <th jad:bundle="default" jad:i18n="name.name">Name</th>
+	                           <th jad:bundle="default" jad:i18n="actions.name" class="remove-if-read-only">Actions</th>
+	                       </tr>
+	                   </thead>
+	                   <tbody jad:role="items"></tbody>
+	               </table>
+			</div>
+		</div>
+		
+		<template jad:role="item">
+		    <tr>
+		    	<input jad:role="form-variable" type="hidden">
+		    	<td>
+		    		<span jad:role="display-name" class="underline"></span>
+		    	</td>
+		    	<td jad:role="actions" class="remove-if-read-only">
+		    		<a href="#" class="collectionTextDelete"><i class="fa-solid fa-fw fa-trash me-2"></i></a>
+		    	</td>
+		    </tr>
+		</template>
+	
+	</div>
+
+</body>
+</html>

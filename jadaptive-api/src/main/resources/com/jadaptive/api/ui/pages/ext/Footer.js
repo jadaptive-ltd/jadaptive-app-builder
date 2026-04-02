@@ -94,17 +94,6 @@ $(function() {
 		}
 	});
 	
-	/* BPS - What is this for? It is stopping Enter key form submission everywhere */
-	/*
-	$(document).on('keypress', 'input[type="text"]', function(e) {
-		
-		if (e.keyCode === 13) {
-			e.stopPropagation();
-			return false;
-		}
-	});
-	*/
-	
 	$(document).on('keyup', '.multipleTagSource', function(e) {
 		
 		if (e.keyCode === 13) {
@@ -144,143 +133,6 @@ $(function() {
 		children.detach().appendTo(target);
 	});
 	
-	$(document).on('keyup', '.collectionSearchInputText', function(e) {
-		
-		createDropdown($(this).val(), $(this).data('url'), 
-							$(this).data('field'),
-							$(this).data('id'),
-							$(this).closest(".dropdown").find('.dropdown-menu'),
-							$(this),
-							'collectionSearchInputSelection');
-		
-	});
-	
-	$(document).on('click', '.collectionSearchInputText', function(e) {
-		    
-			createDropdown($(this).val(), $(this).data('url'), 
-								$(this).data('field'),
-								$(this).data('id'),
-								$(this).closest(".dropdown").find('.dropdown-menu'),
-								$(this),
-								'collectionSearchInputSelection',
-								true);
-	});
-	
-	$(document).on('click', '.collectionTextAdd', function(e) {
-		
-		e.preventDefault();
-		var source = $(this).siblings('.collectionTextInputText');
-		
-		if(source.val()!=='') {
-			var select = source.closest(".collectionTextInput").find('table');
-			$(select).removeClass('d-none');
-			var name = source.closest('.collectionTextInput').data('resourcekey');
-			
-			select.append('<tr><input type="hidden" name="' + name + '" value="' + source.val() + '"><td>' + source.val() + '</td><td>' +
-							'<a href="#" class="collectionSearchUp"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-up me-2"></i></a>'  +
-							'<a href="#" class="collectionSearchDown"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-down me-2"></i></a>' +
-							'<a href="#" class="collectionSearchDelete"><i class="' + $('body').data('iconset') + ' fa-fw fa-trash me-2"></i></a>' + 
-						  '</td></tr>');
-		    source.val('');
-		    doOrderState(select.find('tr'));
-	    }
-	});
-	
-	$(document).on('keypress', '.collectionTextInputText', function(e) {
-		
-		if (e.keyCode === 13) {
-			e.preventDefault();
-			e.stopPropagation();
-			
-			if($(this).val()!=='') {
-				var select = $(this).closest(".collectionTextInput").find('table');
-				$(select).removeClass('d-none');
-				var name = $(this).closest('.collectionTextInput').data('resourcekey');
-				
-				select.append('<tr><input type="hidden" name="' + name + '" value="' + $(this).val() + '"><td>' + $(this).val() + '</td><td>' +
-								'<a href="#" class="collectionSearchUp"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-up me-2"></i></a>'  +
-								'<a href="#" class="collectionSearchDown"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-down me-2"></i></a>' +
-								'<a href="#" class="collectionSearchDelete"><i class="' + $('body').data('iconset') + ' fa-fw fa-trash me-2"></i></a>' + 
-							  '</td></tr>');
-			    $(this).val('');
-			    doOrderState(select.find('tr'));
-		    }
-		}
-
-	});
-
-	var doOrderState = function(el) {
-
-		el.closest("tbody").find('.collectionSearchUp').find('i').addClass('fa-arrow-up');
-		el.closest("tbody").find('.collectionSearchUp').find('i').first().removeClass('fa-arrow-up');
-		el.closest("tbody").find('.collectionSearchDown').find('i').addClass('fa-arrow-down');
-		el.closest("tbody").find('.collectionSearchDown').find('i').last().removeClass('fa-arrow-down');
-
-	}
-		
-	$(document).on('click', '.collectionSearchDelete', function(e) {
-		e.preventDefault();
-		var el = $(this).closest("tbody");
-		$(this).closest("tr").remove();
-		doOrderState(el.find('tr'));
-	});
-	
-	$(document).on('click', '.collectionSearchUp', function(e) {
-		e.preventDefault();
-		var row = $(this).closest("tr");
-		var prev = row.prev();
-		if(prev.length > 0) {
-			prev.before(row);
-		}
-
-		doOrderState($(this));
-	});
-	
-	$(document).on('click', '.collectionSearchDown', function(e) {
-		e.preventDefault();
-		var row = $(this).closest("tr");
-		var next = row.next();
-		if(next.length > 0) {
-			next.after(row);
-		}
-		doOrderState($(this));
-	});
-	
-	$('.collectionSearchInput').each(function(idx, obj) {
-		doOrderState($(obj).find('table').find('.collectionSearchUp').first());
-	});
-	
-	$(document).on('click', '.collectionSearchInputSelection', function(e) {
-		e.preventDefault();
-		debugger;
-		var uuid = $(this).data('resourcekey');
-		var name = $(this).text();
-		var select = $(this).closest(".collectionSearchInput").find('table');
-		$(select).removeClass('d-none');
-		var exists = false;
-		select.find('tr').each(function(idx, obj) { 
-			var thisUUID = $(obj).find('input').first().attr('value');
-			if(thisUUID === uuid) {
-				exists = true;
-				return false;
-			}
-		});
-		
-		if(!exists) {
-			var variableName = $(this).closest('.collectionSearchInput').data('resourcekey');
-			$(this).closest('.collectionSearchInput').find('.collectionSearchInputText').val('');
-			select.append('<tr><input type="hidden" name="' + variableName + '" value="' + uuid + '">'
-						+ '<input type="hidden" name="' + variableName + 'Text" value="' + name + '"><td>' + $(this).text() + '</td><td>' +
-							'<a href="#" class="collectionSearchUp"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-up me-2"></i></a>'  +
-							'<a href="#" class="collectionSearchDown"><i class="' + $('body').data('iconset') + ' fa-fw fa-arrow-down me-2"></i></a>' +
-							'<a href="#" class="collectionSearchDelete"><i class="' + $('body').data('iconset') + ' fa-fw fa-trash me-2"></i></a>' + 
-						  '</td></tr>');
-			
-			doOrderState(select.find('.collectionSearchUp').first());
-		}
-	}); 
- 
-	
 	var createItem = function(menu, key, value, selectionClass) {
 		menu.append('<a data-resourcekey="' + key + '" class="' + selectionClass + ' dropdown-item" href="#">' + value + '</a>');
 	}
@@ -319,33 +171,6 @@ $(function() {
 
 	});
 	
-	$('.filter-dropdown').on('keypress', function(e) {
-		var text = $(this).val().trim().toLowerCase();
-		$(this).parent().find('.dropdown-menu a').each(function(idx, obj) {
-			if(text === '' || $(this).text().toLowerCase().startsWith(text)) {
-				$(this).show();
-			} else {
-				$(this).hide();
-			}
-		});
-	});
-	
-	$('.filter-dropdown').on('keyup', function(e) {
-		if(e.keyCode == 40) {
-			var text = $(this).val().trim().toLowerCase();
-			$(this).parent().find('.dropdown-menu a').each(function(idx, obj) {
-				if(text === '' || $(this).text().toLowerCase().startsWith(text)) {
-					$(this).show();
-					$(this).focus();
-					return false;
-				}
-			});
-			e.stopPropagation();
-			return;
-		}
-				
-	})
-
 	$('#footer input[name="theme"]').on('change', function(e) {
 		document.cookie = "userTheme=" + $(this).val() + '; path=/; expires=Tue, 01 Jan 2038 00:00:00 UTC;';
 		window.location.reload();

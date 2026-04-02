@@ -803,11 +803,13 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 			url = url.replace("{uuid}", Objects.nonNull(obj) && StringUtils.isNotBlank(obj.getUuid()) ? obj.getUuid() : "");
 
 			CollectionSearchFormInput render = new CollectionSearchFormInput(
-					currentTemplate.get(), fieldView, 
-					url,
-					"name", "uuid");
-			render.renderInput(element, values, false, 
+					fieldView, 
+					url, 
+					"name", 
+					"uuid",
+					values,
 					(view == FieldView.READ || fieldView.getField().isReadOnly()));
+			render.renderInput(element, false);
 			break;
 		}
 		case ATTACHMENT:
@@ -853,10 +855,10 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 				}
 			}
 			
-			CollectionSearchFormInput render = new CollectionSearchFormInput(
-					currentTemplate.get(), fieldView, "/app/api/countries/table",
-					"name", "code");
-			render.renderInput(element, values, false, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+			CollectionSearchFormInput render = new CollectionSearchFormInput(fieldView, "/app/api/countries/table",
+					"name", "code", values, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+			
+			render.renderInput(element, false);
 			
 			break;
 		}
@@ -887,10 +889,9 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 					return;
 				}
 				
-				CollectionSearchFormInput render = new CollectionSearchFormInput(
-						currentTemplate.get(), fieldView, field.getMeta(),
-						"name", "value");
-				render.renderInput(element, values, false, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+				CollectionSearchFormInput render = new CollectionSearchFormInput(fieldView, field.getMeta(),
+						"name", "value", values, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+				render.renderInput(element, false);
 
 				break;
 			}
@@ -916,9 +917,18 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 				}
 				
 				
-				CollectionTextFormInput render = new CollectionTextFormInput(currentTemplate.get(), fieldView);
-				render.renderInput(panel, element, 
-						values, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+				CollectionTextFormInput render = new CollectionTextFormInput(
+						currentTemplate.get(), 
+						fieldView,
+						values);
+				render.renderInput(element, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+				
+				
+//				render.values
+//				render.renderInput(panel, element, 
+//						values, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+//
+//				render.renderInput(element, fieldView, (view == FieldView.READ || fieldView.getField().isReadOnly()));
 				
 				List<String> replacementVars = replacementVariables.get();
 				if(Objects.nonNull(replacementVars) && replacementVars.size() > 0) {
@@ -949,9 +959,11 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 			}
 			
 			CollectionSearchFormInput render = new CollectionSearchFormInput(
-					currentTemplate.get(), fieldView, "/app/api/permissions/table",
-					"name", "value");
-			render.renderInput(element, values, false, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+					fieldView, "/app/api/permissions/table",
+					"name", "value", values, (view == FieldView.READ || fieldView.getField().isReadOnly()));
+
+			render.renderInput(element, false);
+			
 			
 			break;
 		}
@@ -1337,7 +1349,7 @@ public abstract class AbstractObjectRenderer extends AbstractPageExtension {
 				render.disableDecoration();
 			}
 			render.renderInput(element, getFieldValue(fieldView, obj), view == FieldView.READ);
-			render.renderValues(permissionService.getAllPermissions(), getFieldValue(fieldView, obj));
+			render.renderValues(permissionService.getAllPermissions(), getFieldValue(fieldView, obj), view == FieldView.READ);
 		
 			break;
 		}

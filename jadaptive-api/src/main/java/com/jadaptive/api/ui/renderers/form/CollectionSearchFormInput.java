@@ -5,35 +5,34 @@ import java.util.Collection;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.nodes.Element;
 
-import com.jadaptive.api.template.ObjectTemplate;
 import com.jadaptive.api.template.TemplateViewField;
-import com.jadaptive.api.ui.Html;
 import com.jadaptive.api.ui.NamePairValue;
 
-public class CollectionSearchFormInput {
+/**
+ * Renderer for a form input that allows searching and selecting items from a collection.
+ * The input is rendered as a dropdown with a search field, and selected items are displayed in
+ * a table below the input. The renderer supports both read-only and editable modes, and can be configured
+ * to use resource keys for display names if needed.
+ */
+public class CollectionSearchFormInput extends DropdownFormInput {
 
-	Element table;
-	String url;
-	String searchField;
-	String idField;
-	protected ObjectTemplate template;
-	
-	String resourceKey;
-	String formVariable;
-	String bundle;
-	
-	public CollectionSearchFormInput(ObjectTemplate template, String resourceKey, String formVariable, String bundle, String url, String searchField, String idField) {
-		this.template = template;
-		this.url = url;
-		this.searchField = searchField;
-		this.idField = idField;
-		this.resourceKey = resourceKey;
-		this.formVariable = formVariable;
-		this.bundle = bundle;
-	}
-	
-	public CollectionSearchFormInput(ObjectTemplate template, TemplateViewField field, String url, String searchField, String idField) {
-		this.template = template;
+	private final String url;
+	private final String searchField;
+	private final String idField;
+	private final boolean nameIsResourceKey;
+	private final Collection<NamePairValue> selectedValues;
+
+	public CollectionSearchFormInput(
+			TemplateViewField field, 
+			String url, 
+			String searchField, 
+			String idField,
+			Collection<NamePairValue> selectedValues,
+			boolean nameIsResourceKey
+		) {
+		super(field);
+		this.nameIsResourceKey = nameIsResourceKey;
+		this.selectedValues = selectedValues;
 		this.url = url;
 		this.searchField = searchField;
 		this.idField = idField;
@@ -41,105 +40,48 @@ public class CollectionSearchFormInput {
 		this.formVariable = field.getFormVariable();
 		this.bundle = field.getBundle();
 	}
-	
-	
 
-	public void renderInput(Element rootElement, 
-			Collection<NamePairValue> selectedValues,
-			boolean nameIsResourceKey,
-			boolean readOnly) {
-		
-			Element div;
-			rootElement.appendChild(new Element("div").addClass("row mb-3 collectionSearchInput")
-					.attr("data-resourcekey", resourceKey)
-					.appendChild(div = new Element("div")
-							.addClass("col-12")
-					.appendChild(new Element("label")
-							.attr("for", formVariable)
-							.addClass("form-label")
-							.attr("jad:bundle", bundle)
-							.attr("jad:i18n", String.format("%s.name", resourceKey)))));
-			
-			div.appendChild(new Element("div")
-							.attr("id", String.format("%sDropdown", resourceKey))
-							.addClass("input-group position-relative dropdown" + (readOnly ? " d-none" : ""))
-						.appendChild(new Element("input")
-								.attr("autocomplete", "off")
-								.attr("id", String.format("%sText", resourceKey))
-								.attr("data-display", "static")
-								.addClass("form-control collectionSearchInputText")
-								.attr("data-bs-toggle", "dropdown")
-								.attr("autocomplete", "off")
-								.attr("data-url", url)
-								.attr("data-field", searchField)
-								.attr("data-id", idField)
-								.attr("type", "text")
-								.attr("aria-haspopup", "true")
-								.attr("aria-expanded", "false"))
-						.appendChild(new Element("span")
-								.attr("class", "input-group-text")
-							.appendChild(new Element("i")
-									.attr("class", "fa-solid fa-search")))
-						.appendChild(new Element("div")
-								.addClass("dropdown-menu dropdown-size")
-								.attr("aria-labelledby", String.format("%sDropdown", resourceKey))));
-			
-			Element table;
-			
-			div.appendChild(new Element("div")
-						.addClass("row")
-						.appendChild(new Element("div")
-								.attr("id", formVariable)
-								.addClass("col-md-12")
-								.appendChild(table = new Element("table")
-										.addClass("w-100 collectionSearchTarget table table-sm table-striped")
-									.appendChild(new Element("thead")
-											.appendChild(new Element("tr")
-													.appendChild(new Element("td")
-															.attr("jad:bundle","default")
-															.attr("jad:i18n", "name.name"))
-													.appendChild(new Element("td")
-															.appendChild(Html.i18n("default", "actions.name")
-															.addClass(readOnly ? "d-none" : "")))
-											.appendChild(table = new Element("tbody")))))))
-						.appendChild(new Element("div")
-								.addClass("row")
-								.appendChild(new Element("div")
-									.addClass("col-md-10")
-									.appendChild(new Element("small")
-											.addClass("text-muted")
-											.attr("jad:bundle", bundle)
-											.attr("jad:i18n", String.format("%s.desc", resourceKey))))	);
-		
-		
+	@Override
+	public Class<?> getResourceClass() {
+		return DropdownFormInput.class;
+	}
+
+	@Override
+	public String getHtmlResource() {
+		return String.format("%s.html", CollectionSearchFormInput.class);
+	}
+
+	@Override
+	protected void configureInputElement() {
+		super.configureInputElement();
+		nameElement.dataset().put("id", idField);
+		nameElement.dataset().put("url", url);
+		nameElement.dataset().put("field", searchField);
+		nameElement.dataset().put("form-variable", formVariable);
+	}
+
+	@Override
+	protected void onRender(Element rootElement, String defaultValue, boolean readOnly, String... classes) {
+		super.onRender(rootElement, defaultValue, readOnly, classes);
+		var items = rootElement.getElementsByAttributeValue("jad:role", "items").first();
 		if(selectedValues.size() > 0) {
+			rootElement.getElementsByAttributeValue("jad:role", "empty-table").addClass("d-none");
+			var template = rootElement.getElementsByAttributeValue("jad:role", "item").get(0);
 			for(NamePairValue value : selectedValues) {
-				Element displayName;
-				Element row;
-				table.appendChild(row = new Element("tr")
-						.appendChild(new Element("input")
-								.attr("type", "hidden")
-								.attr("id", formVariable)
-								.attr("name", formVariable)
-								.attr("value", value.getValue()))
-						.appendChild(new Element("input")
-								.attr("type", "hidden")
-								.attr("name", String.format("%sText", formVariable))
-								.attr("id", String.format("%sText", formVariable))
-								.attr("value", value.getName()))
-						.appendChild(new Element("td")
-								.appendChild(displayName = Html.span(StringUtils.defaultIfBlank(value.getName(), "-"), "underline"))));
-				if(!readOnly) {
-						row.appendChild(new Element("td")
-								.appendChild(Html.a("#", "collectionSearchDelete")
-										.appendChild(Html.i("fa-solid", "fa-fw", "fa-trash", "me-2")))
-								.appendChild(Html.a("#", "collectionSearchUp")
-										.appendChild(Html.i("fa-solid", "fa-fw", "fa-arrow-up", "me-2")))
-								.appendChild(Html.a("#", "collectionSearchDown")
-										.appendChild(Html.i("fa-solid", "fa-fw", "fa-arrow-down", "me-2"))));		
-				} else {
-					row.appendChild(new Element("td"));
-				}
+				Element row = template.firstElementChild().clone().removeAttr("jad:role").appendTo(items);
+				
+				row.getElementsByAttributeValue("jad:role", "form-variable").first().
+					attr("name", formVariable).
+					attr("value", value.getValue()).
+					attr("id", formVariable);
+				
+				row.getElementsByAttributeValue("jad:role", "form-variable-text").first().
+					attr("name", String.format("%sText", formVariable)).
+					attr("value", value.getName()).
+					attr("id", String.format("%sText", formVariable));
+				
+				Element displayName = row.getElementsByAttributeValue("jad:role", "display-name").first();
+				displayName.text(StringUtils.defaultIfBlank(value.getName(), "-"));
 				if(nameIsResourceKey) {
 					displayName.attr("jad:bundle", bundle)
 								.attr("jad:i18n", value.getName());
@@ -147,8 +89,7 @@ public class CollectionSearchFormInput {
 			}
 		}
 		else {
-			table.before(new Element("em").appendChild(Html.i18n("userInterface", "emptyList.text").addClass("small text-muted")));
-			table.addClass("d-none");
+			rootElement.getElementsByAttributeValue("jad:role", "table").select("table").first().addClass("d-none");
 		}
 	}
 
