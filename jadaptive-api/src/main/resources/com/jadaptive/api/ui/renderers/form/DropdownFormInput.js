@@ -130,7 +130,7 @@ class DropdownFormInput {
 	
 	focusNextFormField(currentField) {
 		const field = currentField || this.input;
-		const root = field.closest('form') || document;
+		const root = field.closest('form') || this.container;
 		const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 		const focusable = Array.from(root.querySelectorAll(focusableSelector))
 			.filter(el => el.offsetParent !== null || el === field);
@@ -201,7 +201,7 @@ class DropdownFormInput {
         /**
          * If there is a table defined, add the selected item to it if it is not already there. 
          */
-		if(this.table) {
+		if(this.table && this.input.value.length > 0) {
 			var exists = false;
 			this.table.querySelectorAll('tr input[type="hidden"]').forEach(el => {
 				const thisUUID = el.value;
@@ -212,14 +212,20 @@ class DropdownFormInput {
 			});
 
 			if(!exists) {
-				this.table.querySelector('table').classList.remove('d-none');
-				const tr = document.querySelector('[jad\\:role="item"]').content.cloneNode(true);
+				debugger;
+
+				const tr = this.container.querySelector('[jad\\:role="item"]').content.cloneNode(true);
 				const formVar = tr.querySelector('[jad\\:role="form-variable"]');
+				const formVarText  = tr.querySelector('[jad\\:role="form-variable-text"]');
+				
+				
+				this.table.querySelector('table').classList.remove('d-none');
+				
+				
 				formVar.name = this.input.dataset.formVariable;
 				formVar.setAttribute('id',  this.input.dataset.formVariable);
 				formVar.value = this.reference.value;
 
-				const formVarText  = tr.querySelector('[jad\\:role="form-variable-text"]');
 				formVarText.name = this.input.dataset.formVariable + 'Text';
 				formVarText.setAttribute('id',  this.input.dataset.formVariable + 'Text');
 				formVarText.value = this.input.value;

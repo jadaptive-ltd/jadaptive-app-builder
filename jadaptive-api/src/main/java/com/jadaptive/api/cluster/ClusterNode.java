@@ -23,7 +23,7 @@ otherColumns = {
 }, multipleDelete = false)
 @PageMenu(
 		parent = ApplicationMenuService.REPORTING_MENU_UUID, 
-		icon = "fa-stars", 
+		icon = "fa-diagram-project", 
 		weight = 2000, 
 		withPermission = "system.read",
 		filter =  JoinedFilter.class)

@@ -20,9 +20,8 @@ public class CreateTenant extends WizardUUIDEntity {
 
 	@ObjectField(type = FieldType.TEXT)
 	@Validator(type = ValidationType.REQUIRED)
-	@Validator(type = ValidationType.REGEX, value = "^[a-zA-Z0-9][a-zA-Z0-9\\s\\-\\&\\.\\,\\']{2,}$", bundle = RESOURCE_KEY, i18n = "company.invalid")
+	@Validator(type = ValidationType.REGEX, value = "^[a-zA-Z0-9][a-zA-Z0-9\\(\\)\\!\\@\\$\\$\\^\\*\\+\\=\\?\\/\\|\\~\\s\\-\\&\\.\\,\\']{2,}$", bundle = RESOURCE_KEY, i18n = "company.invalid")
 	String company;
-
 	@ObjectField(type = FieldType.TEXT)
 	@Validator(type = ValidationType.REQUIRED)
 	@Validator(type = ValidationType.REGEX, value = "^[^0-9]+.*$", bundle = RESOURCE_KEY, i18n = "name.invalid")

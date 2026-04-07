@@ -16,7 +16,7 @@ import com.jadaptive.api.template.Validator;
 import com.jadaptive.api.ui.pages.config.ConfigurationItem;
 
 @ObjectDefinition(resourceKey = QuotaThreshold.RESOURCE_KEY, scope = ObjectScope.GLOBAL, defaultColumn = "key")
-@ConfigurationItem(bundle = QuotaThreshold.RESOURCE_KEY, icon = "fa-traffic-light-stop", resourceKey = QuotaThreshold.RESOURCE_KEY, path = "/app/ui/search/quotaThresholds")
+@ConfigurationItem(bundle = QuotaThreshold.RESOURCE_KEY, icon = "fa-traffic-light", resourceKey = QuotaThreshold.RESOURCE_KEY, path = "/app/ui/search/quotaThresholds")
 @TableView(defaultColumns = {"key", "periodValue", "periodUnit", "value"})
 @ObjectViewDefinition(value = QuotaThreshold.QUOTA_VIEW, weight = 0)
 @ObjectViewDefinition(value = QuotaThreshold.OPTIONS_VIEW, weight = 1000)
