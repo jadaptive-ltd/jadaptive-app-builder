@@ -24,6 +24,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,6 +66,8 @@ import com.jadaptive.api.ui.renderers.form.BootstrapBadgeRender;
 import com.jadaptive.utils.Utils;
 @TableView(defaultColumns = { "uuid" })
 public class TableRenderer {
+	
+	private final static Logger LOG = LoggerFactory.getLogger(TableRenderer.class);
 
 	@Autowired
 	private ObjectTemplateRepository templateRepository; 
@@ -210,7 +214,9 @@ public class TableRenderer {
 
 			Element el;
 			if(Objects.nonNull(objects) && !objects.isEmpty()) {
-				Element table = Html.table("table").attr("data-toggle", "table");
+				Element table = Html.table("table");
+				table.dataset().put("toggle", "table");
+				table.dataset().put("id", template.getResourceKey());
 				tableholder.appendChild(table);
 
 				try(var timed = timed("TableRender.dataRendering")) {
@@ -278,6 +284,8 @@ public class TableRenderer {
 									rowTemplate = ApplicationServiceImpl.getInstance().getBean(TemplateService.class).get(obj.getResourceKey());
 								}
 								Element row = Html.tr();
+								row.dataset().put("id", obj.getUuid());
+								row.addClass("entity-row");
 								
 								if(hasMultipleSelection) {
 									Element cb = Html.input("checkbox", "selectedUUID", obj.getUuid());
@@ -295,20 +303,25 @@ public class TableRenderer {
 								try(var timed3 = timed("TableRender.dataRendering.renderColumns")) {
 									for(String column : columns.keySet()) {
 										try(var timed4 = timed("TableRender.dataRendering.renderColumns." + column)) {
+											
+											var td = Html.td();
+											td.dataset().put("column", column);
+											td.addClass("entity-column");
+											
 											if(dynamicColumns.containsKey(column)) {
 											
 												DynamicColumn dc = dynamicColumns.get(column);
 												DynamicColumnService service = ApplicationServiceImpl.getInstance().getBean(dc.service());
 												Element col = service.renderColumn(column, obj, rowTemplate);
-												row.appendChild(Html.td().appendChild(col == null ? Html.span("") : col));
+												row.appendChild(td.appendChild(col == null ? Html.span("") : col));
 												
 											} else {
 												FieldTemplate t = columns.get(column).getField(column);
 												if(t == null) {
-													row.appendChild(Html.td().appendChild(Html.span("<missing column: " + column + ">")));
+													row.appendChild(td.appendChild(Html.span("<missing column: " + column + ">")));
 												}
 												else {
-													row.appendChild(Html.td().appendChild(renderElement(obj, rowTemplate, t, defaultAction)));
+													row.appendChild(td.appendChild(renderElement(obj, rowTemplate, t, defaultAction)));
 												}
 											}
 										}
@@ -415,7 +428,9 @@ public class TableRenderer {
 		Element e;
 		if(Objects.nonNull(t)) {
 			el.appendChild(Html.td()
+					.attr("data-column", column)
 					.addClass(column)
+					.addClass("entity-column-header")
 					.appendChild(
 					e = Html.a("#")
 						.addClass("sortColumn text-decoration-none")
@@ -423,7 +438,9 @@ public class TableRenderer {
 						.appendChild(Html.i18n(template.getBundle(),String.format("%s.name", t.getResourceKey())))));
 		} else {
 			el.appendChild(Html.td()
+					.attr("data-column", column)
 					.addClass(column)
+					.addClass("entity-column-header")
 					.appendChild(
 					e = Html.a("#")
 						.addClass("sortColumn text-decoration-none")
@@ -627,6 +644,10 @@ public class TableRenderer {
 		if(Objects.isNull(parentObject)) {
 			
 			Class<?> clz = templateService.getTemplateClass(t.getResourceKey());
+			if(clz == null) {
+				LOG.info("Failed to find template class for resourceKey {}. Cannot render create action.", t.getResourceKey());
+				return;
+			}
 			CreateURL[] urls = clz.getAnnotationsByType(CreateURL.class);
 			if(Objects.nonNull(urls) && urls.length > 0) {
 				for(CreateURL url : urls) {
