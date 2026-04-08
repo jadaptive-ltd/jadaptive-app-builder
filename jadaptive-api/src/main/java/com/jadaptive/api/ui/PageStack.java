@@ -2,9 +2,6 @@ package com.jadaptive.api.ui;
 
 import java.util.Stack;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.jadaptive.api.servlet.Request;
 
 /**
@@ -20,7 +17,6 @@ import com.jadaptive.api.servlet.Request;
  */
 public class PageStack {
 	
-	private static final Logger LOG = LoggerFactory.getLogger(PageStack.class);
 	private Stack<String> stack = new Stack<>();
 
 	public static PageStack get() {
@@ -76,10 +72,6 @@ public class PageStack {
 		}
 		
 		stack.push(url);
-
-		if(Boolean.getBoolean("jadaptive.development") || Boolean.getBoolean("jadaptive.showPageStack")) {
-			LOG.info("REMOVEME: Pushed page onto stack: {}, Stack size: {}, Popped: {}", url, stack.size(), popped);
-		}
 	}
 
 	/**
