@@ -81,6 +81,7 @@ public class CollectionTextFormInput extends TextFormInput {
 			component.attr("id", String.format("%sTextFormInput", resourceKey));
 
 			input = elementForRole(component, "input");
+			input.dataset().put("form-variable", formVariable);
 			if (!disableIDAttribute) {
 				input.attr("id", String.format("%sText", resourceKey));
 			}
