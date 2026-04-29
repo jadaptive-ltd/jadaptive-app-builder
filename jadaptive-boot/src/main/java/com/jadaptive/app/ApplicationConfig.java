@@ -168,8 +168,8 @@ public class ApplicationConfig {
 					break;
 				}
 
-				installExtensions("Install", installed, autoUpdate, false);
-				installExtensions("InstallBase", installed, autoUpdate, true);
+				installExtensions("InstallUser", installed, autoUpdate, false);
+				installExtensions("Install", installed, autoUpdate, true);
 				
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
