@@ -1,15 +1,16 @@
 package com.jadaptive.api.app;
 
+import static java.nio.file.Files.createDirectories;
+
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.security.Provider;
 import java.security.Security;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -23,27 +24,29 @@ public class ApplicationProperties {
 	
 	static ApplicationProperties instance = new ApplicationProperties();
     static Properties properties;
-	static File confFolder;
-	static File confdFolder;
 	
 	ApplicationProperties() {
 		
 		checkBouncyCastleProvider();
 		
-		confFolder = new File(System.getProperty("jadaptive.conf", "conf"));
-		confFolder.mkdirs();
+		var confFolder = ConfigLocations.Defaults.get().getConfig();
+		var confdFolder = ConfigLocations.Defaults.get().getDropInConfig();
 		
-		confdFolder = new File(System.getProperty("jadaptive.conf", "conf.d"));
-		confdFolder.mkdirs();
+		try {
+			createDirectories(confFolder);
+			createDirectories(confdFolder);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 		
-		File propertiesFile = new File(confdFolder, "ssl.properties");
-		File certificateProperties = new File(confdFolder, "certificate.properties");
-		File serverProperties = new File(confdFolder, "server.properties");
+		var propertiesFile = confdFolder.resolve("ssl.properties");
+		var certificateProperties = confdFolder.resolve("certificate.properties");
+		var serverProperties = confdFolder.resolve("server.properties");
 		
-		if(!certificateProperties.exists()) {
+		if(!Files.exists(certificateProperties)) {
 			try {
 				
-				FileUtils.writeStringToFile(certificateProperties,"""		
+				FileUtils.writeStringToFile(certificateProperties.toFile(),"""		
 				# Certificate Properties
 				server.ssl.bundle=default
 				spring.ssl.bundle.jks.default.reload-on-update=true
@@ -59,12 +62,12 @@ public class ApplicationProperties {
 			}
 		}
 		
-		if(propertiesFile.exists()) {
+		if(Files.exists(propertiesFile)) {
 			
-			if(!serverProperties.exists()) {
+			if(!Files.exists(serverProperties)) {
 				try {
 					Properties props = new Properties();
-					try(InputStream in = new FileInputStream(propertiesFile)) {
+					try(var in = Files.newInputStream(propertiesFile)) {
 						props.load(in);
 					}
 					
@@ -73,7 +76,7 @@ public class ApplicationProperties {
 					newProps.setProperty("server.ssl.enabled", "true");
 					newProps.setProperty("server.ssl.protocol", "TLS");
 					
-					try(OutputStream out = new FileOutputStream(serverProperties)) {
+					try(var out = Files.newOutputStream(serverProperties)) {
 						newProps.store(out, "Server Properties");
 					}
 	
@@ -82,13 +85,15 @@ public class ApplicationProperties {
 				}
 			}
 			
-			if(!propertiesFile.delete()) {
+			try {
+				Files.delete(propertiesFile);
+			} catch (IOException e) {
 				throw new IllegalStateException("Cannot delete conf.d/ssl.properties! Please delete this file manually");
 			}
-		} else if(!serverProperties.exists()) {
+		} else if(!Files.exists(serverProperties)) {
 			
 			try {
-				FileUtils.writeStringToFile(serverProperties,"""		
+				FileUtils.writeStringToFile(serverProperties.toFile(),"""		
 						# Server Properties
 						server.port=443
 						server.ssl=true
@@ -98,11 +103,11 @@ public class ApplicationProperties {
 			}
 		}
 		
-		propertiesFile = new File(confdFolder, "database.properties");
-		if(!propertiesFile.exists()) {
+		propertiesFile = confdFolder.resolve("database.properties");
+		if(!Files.exists(propertiesFile)) {
 			try {
 				
-				FileUtils.writeStringToFile(propertiesFile,"""		
+				FileUtils.writeStringToFile(propertiesFile.toFile(),"""		
 				# Database Properties
 				#mongodb.embedded=true
 				#mongodb.connection=
@@ -113,10 +118,10 @@ public class ApplicationProperties {
 			}
 		}
 		
-		File log4j = new File(confdFolder, "log4j2.xml");
-		if(!log4j.exists()) {
+		var log4j = confdFolder.resolve("log4j2.xml");
+		if(!Files.exists(log4j)) {
 			try {
-			FileUtils.writeStringToFile(log4j,"""	
+			FileUtils.writeStringToFile(log4j.toFile(),"""	
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" monitorInterval="30">
     <Properties>
@@ -131,8 +136,8 @@ public class ApplicationProperties {
         <Console name="ConsoleAppender" target="SYSTEM_OUT">
             <PatternLayout pattern="${LOG_PATTERN_COLOURED}"/>
         </Console>
-		<RollingFile name="FileAppender" fileName="logs/application.log"
-		         filePattern="application-%i.log.gz">
+		<RollingFile name="FileAppender" fileName="${sys:jadaptive.logs:-logs}/application.log"
+		         filePattern="${sys:jadaptive.logs:-logs}/application-%i.log.gz">
 		    <PatternLayout>
 		        <Pattern>${LOG_PATTERN}</Pattern>
 		    </PatternLayout>
@@ -155,21 +160,24 @@ public class ApplicationProperties {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
-		System.setProperty("log4j.configurationFile", log4j.getAbsolutePath());
+		System.setProperty("log4j.configurationFile", log4j.toAbsolutePath().toString());
 		
 		
 		properties = new Properties();
 		
 		Logger log = LoggerFactory.getLogger(ApplicationProperties.class);
-		for(File file : Arrays.asList(confdFolder.listFiles(f -> f.isFile() && f.getName().endsWith(".properties"))).stream().sorted().toList()) {
-			log.info("Loading properties file {}", file.getName());
-			try {
-				properties.putAll(loadPropertiesFile(file));
-			} catch (IOException e) {
-				log.error("Faild to load properties file {}", file.getName(), e);
+		try(var str = Files.newDirectoryStream(confdFolder, f -> Files.isRegularFile(f) && f.getFileName().toString().endsWith(".properties"))) {
+			for(var path : str) {
+				log.info("Loading properties file {}", path.getFileName());
+				try {
+					properties.putAll(loadPropertiesFile(path.toFile()));
+				} catch (IOException e) {
+					log.error("Faild to load properties file {}", path.getFileName(), e);
+				}
 			}
+		} catch(IOException e) {
+			log.error("Failed to read properties files from conf.d", e);
 		}
-		
 		checkLoaded(log);
 	}
 	
@@ -191,10 +199,6 @@ public class ApplicationProperties {
 	
 	public static Properties getProperties() {
 		return properties;
-	}
-	
-	public static File getConfFolder() {
-		return confFolder;
 	}
 	
 	public static String getValue(String name, String defaultValue) {
@@ -246,11 +250,5 @@ public class ApplicationProperties {
 		}
 	}
 
-	public static File getConfdFolder() {
-		return confdFolder;
-	}
-
-
-	
 	
 }

@@ -36,6 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jadaptive.api.app.App;
 import com.jadaptive.api.app.ApplicationProperties;
 import com.jadaptive.api.app.ApplicationServiceImpl;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.app.StartupAware;
 import com.jadaptive.api.app.VersionProvider;
 import com.jadaptive.api.cluster.BroadcastableEvent;
@@ -543,7 +544,7 @@ public class ClusterManagerImpl extends AbstractUUIDObjectServceImpl<ClusterNode
 		// TODO the joined node should also be normalized with the below upon the first join of another node
 		
 		
-		var confd = Paths.get("conf.d");
+		var confd = ConfigLocations.Defaults.get().getDropInConfig();
 
 		/* Database config */
 		var databasePropertiesFile = confd.resolve("database.properties");
@@ -610,8 +611,7 @@ public class ClusterManagerImpl extends AbstractUUIDObjectServceImpl<ClusterNode
 			
 			LOG.info("Saving new local keys .. ");
 			
-			var privateFolder = Paths.get(ApplicationProperties.getValue("private.dir", "conf")).
-					resolve(ApplicationProperties.getValue("private.conf", "private"));
+			var privateFolder = ConfigLocations.Defaults.get().getPrivateKeys();
 
 			var prvFile = privateFolder.resolve(ApplicationProperties.getValue("private.filename", "secrets"));
 			var pubFile = privateFolder.resolve(ApplicationProperties.getValue("private.filename", prvFile.getFileName().toString() + ".pub"));
@@ -704,7 +704,7 @@ public class ClusterManagerImpl extends AbstractUUIDObjectServceImpl<ClusterNode
 	public void addInitialNode(String peerIpAddress) throws IOException {
 
 		/* Cluster config */
-		var confd = Paths.get("conf.d");
+		var confd = ConfigLocations.Defaults.get().getDropInConfig();
 		var clusterPropertiesFile = confd.resolve("cluster.properties");
 		var clusterProperties = new Properties();
 		if(Files.exists(clusterPropertiesFile)) {

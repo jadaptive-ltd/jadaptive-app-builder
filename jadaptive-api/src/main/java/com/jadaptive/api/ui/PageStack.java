@@ -37,7 +37,9 @@ public class PageStack {
 	 * start a new session with a clean stack.
 	 */
 	public void clear() {
-		stack.clear();
+		synchronized(stack) {
+			stack.clear();
+		}
 	}
 	
 	/**
@@ -48,30 +50,29 @@ public class PageStack {
 	 * @param url the URL of the page to push onto the stack
 	 */
 	public void push(String url) {
-		var urlWithoutQuery = normalizeURL(stripQuery(url));
-		
-		/*
-		 * When we return to a page, we want to remove all pages above it in the stack.
-		 * This is because we are returning to a previous page, not navigating to a new
-		 * page.
-		 */
-		var it = stack.iterator();
-		var popped = 0;
-		while(it.hasNext()) {
-			var item = it.next();
-			var itemWithoutQuery = normalizeURL(stripQuery(item));
-			if(itemWithoutQuery.equals(urlWithoutQuery)) {
-				it.remove();
-				popped++;
-				while(it.hasNext()) {
-					it.next();
+		synchronized(stack) {
+			var urlWithoutQuery = normalizeURL(stripQuery(url));
+			
+			/*
+			 * When we return to a page, we want to remove all pages above it in the stack.
+			 * This is because we are returning to a previous page, not navigating to a new
+			 * page.
+			 */
+			var it = stack.iterator();
+			while(it.hasNext()) {
+				var item = it.next();
+				var itemWithoutQuery = normalizeURL(stripQuery(item));
+				if(itemWithoutQuery.equals(urlWithoutQuery)) {
 					it.remove();
-					popped++;
+					while(it.hasNext()) {
+						it.next();
+						it.remove();
+					}
 				}
 			}
+			
+			stack.push(url);
 		}
-		
-		stack.push(url);
 	}
 
 	/**
@@ -81,7 +82,9 @@ public class PageStack {
 	 * @return the previous page in the stack, or "/" if there is only one page in the stack
 	 */
 	public String previous() {
-		return stack.size() > 1 ? stack.get(stack.size() - 2) : "/";
+		synchronized(stack) {
+			return stack.size() > 1 ? stack.get(stack.size() - 2) : "/";
+		}
 	}
 
 	

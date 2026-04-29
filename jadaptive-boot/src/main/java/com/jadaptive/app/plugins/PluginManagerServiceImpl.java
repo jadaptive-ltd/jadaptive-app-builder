@@ -12,7 +12,6 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Optional;
@@ -23,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.jadaptive.api.app.ApplicationVersion;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.plugins.GAV;
 import com.jadaptive.api.plugins.PluginManagerService;
 import com.jadaptive.app.plugins.maven.Http.HttpClientFactory;
@@ -41,7 +41,7 @@ public class PluginManagerServiceImpl implements PluginManagerService {
 	}
 
 	@Override
-	public Path installOrUpdate(String groupId, String artifactId) throws IOException {
+	public Path installOrUpdate(String groupId, String artifactId, boolean baseExtension) throws IOException {
 
 		var gav = gav(groupId, artifactId);
 		var repoBldr = new RemoteRepositoryBuilder().withRoot(repositoryUrl);
@@ -52,13 +52,19 @@ public class PluginManagerServiceImpl implements PluginManagerService {
 		if (resolvedResult.isPresent()) {
 
 			var resolved = resolvedResult.get();
-			var pluginsDir = Paths.get("plugins");
-			Files.createDirectories(pluginsDir);
-			var pluginZip = pluginsDir.resolve(resolved.filename());
-			if (Files.exists(pluginZip))
+			var basePluginsDir = ConfigLocations.Defaults.get().getBasePlugins();
+			var userPluginsDir = ConfigLocations.Defaults.get().getUserPlugins();
+			var userPluginZip = userPluginsDir.resolve(resolved.filename());
+			var basePluginZip = basePluginsDir.resolve(resolved.filename());
+			if (Files.exists(userPluginZip) || Files.exists(basePluginZip))
 				throw new IllegalStateException(gav + " is already installed.");
+			
 
-			LOG.info("Downloading from {}", resolved.uri());
+			var pluginsDir = baseExtension ? basePluginsDir : userPluginsDir;
+			var pluginZip = baseExtension ? basePluginZip : userPluginZip;
+			Files.createDirectories(pluginsDir);
+
+			LOG.info("Downloading from {} to {}", resolved.uri(), pluginZip);
 			
 			/* Download new extension, but only delete old ones the download
 			 * fails for any reason
@@ -112,9 +118,15 @@ public class PluginManagerServiceImpl implements PluginManagerService {
 
 	@Override
 	public boolean installed(String groupId, String artifactId) throws IOException {
-		var pluginsDir = Paths.get("plugins");
+		var pluginsDir = ConfigLocations.Defaults.get().getBasePlugins();
 		if(Files.exists(pluginsDir)) {
 			return findArtifact(artifactId, pluginsDir).isPresent();
+		}
+		else { 
+			pluginsDir = ConfigLocations.Defaults.get().getUserPlugins();
+			if(Files.exists(pluginsDir)) {
+				return findArtifact(artifactId, pluginsDir).isPresent();
+			}
 		}
 		return false;
 	}
@@ -130,10 +142,18 @@ public class PluginManagerServiceImpl implements PluginManagerService {
 		var resolvedResult = repo.resolve(fact, gav);
 		if (resolvedResult.isPresent()) {
 			var resolved = resolvedResult.get();
-			var pluginsDir = Paths.get("plugins");
-			Files.createDirectories(pluginsDir);
-			var pluginZip = pluginsDir.resolve(resolved.filename());
+			var basePluginsDir = ConfigLocations.Defaults.get().getBasePlugins();
+			var pluginZip = basePluginsDir.resolve(resolved.filename());
 			if (Files.exists(pluginZip)) {
+				/* Base plugins cannot be updated by the user, this version already exists */
+				return false;
+			}
+			
+			var pluginsDir = ConfigLocations.Defaults.get().getUserPlugins();
+			Files.createDirectories(pluginsDir);
+			pluginZip = pluginsDir.resolve(resolved.filename());
+			if (Files.exists(pluginZip)) {
+				/* This version is already installed as user extension, so no update available */
 				return false;
 			}
 			else {
@@ -142,6 +162,16 @@ public class PluginManagerServiceImpl implements PluginManagerService {
 		}
 		else
 			throw new IllegalArgumentException("No results found for " + groupId + ":" + artifactId);
+	}
+	
+	@Override
+	public String getRepositoryUsername() {
+		return repositoryUsername;
+	}
+
+	@Override
+	public String getRepositoryUrl() {
+		return repositoryUrl;
 	}
 
 	@Override

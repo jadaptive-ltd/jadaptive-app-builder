@@ -55,6 +55,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.jadaptive.api.app.ApplicationProperties;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.plugins.PluginManagerService;
 import com.jadaptive.app.json.upload.UploadServlet;
 import com.jadaptive.utils.FileUtils;
@@ -100,12 +101,15 @@ public class ApplicationConfig {
 	@Bean
 	public SpringPluginManager pluginManager() {
 		Collection<String> installed = new ArrayList<String>();
+		Collection<Path> pluginRoots = new ArrayList<>();
+		Collection<String> gitPlugins = new ArrayList<>();
 
 		if(Boolean.getBoolean("jadaptive.development")) {
 		
 			try {
 				repositories = getConfiguration(repositoriesFile);
 				disabledPlugins = new HashSet<>();
+				gitPlugins.addAll(repositories.getOrDefault("GitPlugins", Collections.emptyList()));
 				
 				boolean autoUpdate = repositories.containsKey("AutoUpdate");
 				
@@ -118,15 +122,26 @@ public class ApplicationConfig {
 				}
 	
 				
-				String path = "jadaptive-app-builder";
 				if(repositories.containsKey("AppBuilder")) {
-					path = Paths.get(repositories.get("AppBuilder").iterator().next()).toAbsolutePath().toString();
+					var path = Paths.get(repositories.get("AppBuilder").iterator().next()).toAbsolutePath().toString();
+					if(path.equals(".")) {
+						path = System.getProperty("user.dir");
+					}
+					pluginRoot =  Paths.get(FileUtils.checkEndsWithSlash(path) + "plugins");
+					log.warn("""
+							`AppBuilder` configuration is deprecated, please use a `_run` project, and add 
+							`GitPlugins jadaptive-app-builder/plugins`. You can set environment variable JADAPTIVE_PLUGINS
+							or system property jadaptive.plugins to an absolute path instead. Defaulting to {}
+							""",
+							pluginRoot);
+					
+					System.setProperty("jadaptive.plugins", pluginRoot.toString());
+					gitPlugins.add("jadaptive-app-builder/plugins");
 				}
-				if(path.equals(".")) {
-					path = System.getProperty("user.dir");
+				else {
+					pluginRoot = ConfigLocations.Defaults.get().getBasePlugins();
 				}
 				
-				pluginRoot = Paths.get(FileUtils.checkEndsWithSlash(path) + "plugins");
 				
 				if(repositories.containsKey("GitBase")) {
 					repoBase = Paths.get(repositories.get("GitBase").iterator().next());
@@ -140,8 +155,7 @@ public class ApplicationConfig {
 				} else if(Objects.isNull(repoBase) && pluginRoot.isAbsolute()) {
 					repoBase = pluginRoot.getParent().getParent();
 				}
-				
-
+				pluginRoot = pluginRoot.normalize();
 				
 				Collection<String> mavenRepositories = repositories.getOrDefault("MavenRepository", Collections.emptyList());
 				for(var maven : mavenRepositories) {
@@ -154,116 +168,60 @@ public class ApplicationConfig {
 					break;
 				}
 
-				for (var ipath : repositories.getOrDefault("Install", Collections.emptyList())) {
-					var parts = ipath.split(":");
-					
-					String group, artifact;
-					
-					if(parts.length == 1) {
-						artifact = parts[0];
-						if(artifact.startsWith("logonbox-")) {
-							group = "com.logonbox";
-						}
-						else if(artifact.startsWith("jadaptive-")) {
-							group = "com.jadaptive";
-						}
-						else if(artifact.startsWith("sshtools-")) {
-							group = "com.sshtools";
-						}
-						else {
-							throw new IllegalArgumentException("Extension `" + ipath + "` specifier invalid. Use <groupdId>:<artifactId>");
-						}
-					}
-					else if(parts.length == 2) {
-						group = parts[0];
-						artifact = parts[1];
-					}
-					else {
-						throw new IllegalArgumentException("Extension `" + ipath + "` specifier invalid. Use <groupdId>:<artifactId>");
-					}
-					
-					try {
-						var isInstalled = pluginManagerService.installed(group, artifact); 
-						if(!isInstalled || ( autoUpdate && isInstalled && pluginManagerService.isUpdateable(group, artifact) )) {
-							pluginManagerService.installOrUpdate(group, artifact);
-						}
-						installed.add(artifact);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-				}
+				installExtensions("Install", installed, autoUpdate, false);
+				installExtensions("InstallBase", installed, autoUpdate, true);
 				
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
 		
-		pluginManager = new SpringPluginManager(pluginRoot) {
-
-//			@Override
-//			public void loadPlugins() {
-//				super.loadPlugins();
-//				
-//				/* WORKAROUND: Seems to be bug in pf4j where it doesn't  synchronize the last modified
-//				 * time of the plugin archives with the last mod time of their expanded directories or
-//				 * at least compares it incorrectly.  This means they always get expanded. The check is 
-//				 * there, so we just need to update the times ourselves and make sure the directory is
-//				 * newer. Its safest to round this to the nearest second as well.
-//				 */
-//				try(var str = Files.newDirectoryStream(pluginRoot, f -> !Files.isDirectory(f) && f.getFileName().toString().toLowerCase().endsWith("-jadx.zip"))) {
-//					for(var plugin : str) {
-//						var dir = PluginManagerService.expandedDirectoryForZipFile(plugin);
-//						if(Files.exists(dir)) {
-//							var time = FileTime.from(Files.getLastModifiedTime(plugin).to(TimeUnit.SECONDS), TimeUnit.SECONDS);
-//							Files.setLastModifiedTime(dir, time);
-//							Files.setLastModifiedTime(plugin, FileTime.from(time.to(TimeUnit.SECONDS) - 1, TimeUnit.SECONDS));
-//						}
-//					}
-//				}
-//				catch(IOException ioe) {
-//					throw new UncheckedIOException(ioe);
-//				}
-//			}
+		log.info("Plugin root directory: {}", pluginRoot.toAbsolutePath());
+		pluginRoots.add(pluginRoot);
+		var userPlugins = ConfigLocations.Defaults.get().getUserPlugins();
+		try {
+			Files.createDirectories(userPlugins);
+			pluginRoots.add(userPlugins);
+			log.info("User plugins directory: {}", userPlugins.toAbsolutePath());
+		} catch (IOException e) {
+			log.warn("Failed to create user plugins directory {}. There will be no user plugins.", userPlugins, e);
+		}
+		
+		pluginManager = new SpringPluginManager(pluginRoots.toArray(new Path[0])) {
 
 			@Override
 			protected PluginLoader createPluginLoader() {
-				if(isHybrid()) {
-				    PluginLoader devLoader = new DevelopmentPluginLoader(this);
-				    PluginLoader jarLoader = new JarPluginLoader(this);
-				    PluginLoader zipLoader = new  DefaultPluginLoader(this);
-	
-				    return new PluginLoader() {
-				        @Override
-				        public boolean isApplicable(Path pluginPath) {
-				            return true;
-				        }
-	
-				        @Override
-				        public ClassLoader loadPlugin(Path pluginPath, PluginDescriptor pluginDescriptor) {
-				        	/* Is the path a directory that is NOT an expanded zip? */
-				            if (Files.isDirectory(pluginPath) &&
-				               !Files.exists(pluginPath.getParent().resolve(pluginPath.getFileName().toString() + ".zip"))) {
-				                return devLoader.loadPlugin(pluginPath, pluginDescriptor);
-				            }
-	
-				            String name = pluginPath.getFileName().toString().toLowerCase(Locale.ROOT);
+			    PluginLoader devLoader = new DevelopmentPluginLoader(this);
+			    PluginLoader jarLoader = new JarPluginLoader(this);
+			    PluginLoader zipLoader = new  DefaultPluginLoader(this);
 
-				            /* A jar? */
-				            
-				            if (name.endsWith(".jar")) {
-				                return jarLoader.loadPlugin(pluginPath, pluginDescriptor);
-				            }
-	
-				            /* Otherwise its a zip */
-				             return zipLoader.loadPlugin(pluginPath, pluginDescriptor);
-	
-				        }
-				    };
-				}
-				else {
-					/* Not hybrid loading, just do it the standard way */
-					return super.createPluginLoader();
-				}
+			    return new PluginLoader() {
+			        @Override
+			        public boolean isApplicable(Path pluginPath) {
+			            return true;
+			        }
+
+			        @Override
+			        public ClassLoader loadPlugin(Path pluginPath, PluginDescriptor pluginDescriptor) {
+			        	/* Is the path a directory that is NOT an expanded zip? */
+			            if (Files.isDirectory(pluginPath) &&
+			               !Files.exists(pluginPath.getParent().resolve(pluginPath.getFileName().toString() + ".zip"))) {
+			                return devLoader.loadPlugin(pluginPath, pluginDescriptor);
+			            }
+
+			            String name = pluginPath.getFileName().toString().toLowerCase(Locale.ROOT);
+
+			            /* A jar? */
+			            
+			            if (name.endsWith(".jar")) {
+			                return jarLoader.loadPlugin(pluginPath, pluginDescriptor);
+			            }
+
+			            /* Otherwise its a zip */
+			             return zipLoader.loadPlugin(pluginPath, pluginDescriptor);
+
+			        }
+			    };
 			}
 
 			@Override
@@ -292,7 +250,7 @@ public class ApplicationConfig {
 							Stream.concat(repositories.getOrDefault("Enable", Collections.emptyList()).stream(), 
 							installed.stream()).toList();
 					
-					for (String path : repositories.getOrDefault("GitPlugins", Collections.emptyList())) {
+					for (String path : gitPlugins) {
 						
 						Path pluginsPath;
 						if(Objects.nonNull(repoBase)) {
@@ -324,18 +282,18 @@ public class ApplicationConfig {
 					
 					log.info("Disabled plugins: {}", String.join(", ", disabledPlugins));
 	
-					pluginRepository.add(new FilteredPluginRepository(getPluginsRoot()), () -> {
-						return isDevelopment() || isHybrid();
+					pluginRepository.add(new FilteredPluginRepository(getPluginsRoots().toArray(new Path[0])), () -> {
+						return isDevelopment();
 					});
 				}
 
-				pluginRepository.add(new JarPluginRepository(getPluginsRoot()), () -> {
-					return isNotDevelopment() || isHybrid();
+				pluginRepository.add(new JarPluginRepository(getPluginsRoots()), () -> {
+					return isNotDevelopment();
 				});
-				pluginRepository.add(new DefaultPluginRepository(getPluginsRoot()) {
+				pluginRepository.add(new DefaultPluginRepository(getPluginsRoots()) {
 					
 				}, () -> {
-					return isNotDevelopment() || isHybrid();
+					return isNotDevelopment();
 				});
 
 				return pluginRepository;
@@ -344,11 +302,48 @@ public class ApplicationConfig {
 
 		return pluginManager;
 	}
-	
-	private boolean isHybrid() {
-		return Boolean.getBoolean("jadaptive.loadPluginArchives");
-	}
 
+	private void installExtensions(String verb, Collection<String> installed, boolean autoUpdate, boolean baseExtension) {
+		for (var ipath : repositories.getOrDefault(verb, Collections.emptyList())) {
+			var parts = ipath.split(":");
+			
+			String group, artifact;
+			
+			if(parts.length == 1) {
+				artifact = parts[0];
+				if(artifact.startsWith("logonbox-")) {
+					group = "com.logonbox";
+				}
+				else if(artifact.startsWith("jadaptive-")) {
+					group = "com.jadaptive";
+				}
+				else if(artifact.startsWith("sshtools-")) {
+					group = "com.sshtools";
+				}
+				else {
+					throw new IllegalArgumentException("Extension `" + ipath + "` specifier invalid. Use <groupdId>:<artifactId>");
+				}
+			}
+			else if(parts.length == 2) {
+				group = parts[0];
+				artifact = parts[1];
+			}
+			else {
+				throw new IllegalArgumentException("Extension `" + ipath + "` specifier invalid. Use <groupdId>:<artifactId>");
+			}
+			
+			try {
+				var isInstalled = pluginManagerService.installed(group, artifact); 
+				if(!isInstalled || ( autoUpdate && isInstalled && pluginManagerService.isUpdateable(group, artifact) )) {
+					pluginManagerService.installOrUpdate(group, artifact, baseExtension);
+				}
+				installed.add(artifact);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}
+	}
+	
 	@PreDestroy
 	public void cleanup() {
 		pluginManager.stopPlugins();

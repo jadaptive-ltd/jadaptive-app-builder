@@ -1,8 +1,12 @@
 package com.jadaptive.api.ui.pages.ext;
 
+import static com.jadaptive.api.ui.PageHelper.appendHeadScript;
+import static com.jadaptive.api.ui.PageHelper.appendStylesheet;
+import static com.jadaptive.utils.FileUtils.checkEndsWithSlash;
+import static com.jadaptive.utils.FileUtils.checkStartsWithNoSlash;
 import static com.jadaptive.utils.Npm.scripts;
 
-import java.io.File;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Objects;
 
@@ -14,12 +18,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.jadaptive.api.app.ApplicationProperties;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.db.ClassLoaderService;
 import com.jadaptive.api.ui.AbstractPageExtension;
 import com.jadaptive.api.ui.Page;
-import com.jadaptive.api.ui.PageHelper;
-import com.jadaptive.utils.FileUtils;
 
 @Component
 public class BootstrapOnly extends AbstractPageExtension {
@@ -46,24 +48,18 @@ public class BootstrapOnly extends AbstractPageExtension {
 				EnableBootstrapTheme a = clz.getAnnotation(EnableBootstrapTheme.class);
 				if(StringUtils.isNotBlank(a.path()) && page.isThemePage()) {
 					
-					File themePath = new File(ApplicationProperties.getConfdFolder(),
-							"system" + File.separator + "shared" + File.separator + 
-							"webapp" + a.path());
-					
-					if(themePath.exists()) {
-						runtimePathJs = "/app/content/npm2mvn/npm/" + FileUtils.checkStartsWithNoSlash(FileUtils.checkEndsWithSlash(a.path())) + "dist/js/bootstrap.bundle.min.js";
-						runtimePathCss = "/app/content/npm2mvn/npm/" + FileUtils.checkStartsWithNoSlash(FileUtils.checkEndsWithSlash(a.path())) + "dist/css/bootstrap.min.css"; 
+					if(Files.exists(ConfigLocations.Defaults.get().getDropInConfig().resolve("system", "shared", "webapp", a.path()))) {
+						runtimePathJs = "/app/content/npm2mvn/npm/" + checkStartsWithNoSlash(checkEndsWithSlash(a.path())) + "dist/js/bootstrap.bundle.min.js";
+						runtimePathCss = "/app/content/npm2mvn/npm/" + checkStartsWithNoSlash(checkEndsWithSlash(a.path())) + "dist/css/bootstrap.min.css"; 
 					}
 				}
 			}
 		}
 		
 		scripts(document, "@popperjs/core", "dist/umd/popper.min.js");
-		PageHelper.appendHeadScript(document, runtimePathJs, false, "bootstrapEnabled");
-		PageHelper.appendStylesheet(document, runtimePathCss, "bootstrapCss");
-		PageHelper.appendStylesheet(document, runtimePathCss, "printBootstrap", "print");
-		
-		
+		appendHeadScript(document, runtimePathJs, false, "bootstrapEnabled");
+		appendStylesheet(document, runtimePathCss, "bootstrapCss");
+		appendStylesheet(document, runtimePathCss, "printBootstrap", "print");
 
 	}
 

@@ -1,7 +1,6 @@
 package com.jadaptive.app.templates;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
@@ -43,6 +42,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 
 import com.jadaptive.api.app.ConfigHelper;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.app.ResourcePackage;
 import com.jadaptive.api.cluster.BroadcastableEvent;
 import com.jadaptive.api.db.ClassLoaderService;
@@ -231,10 +231,10 @@ public class TemplateVersionServiceImpl extends AbstractLoggingServiceImpl imple
 		}
 		
 		if(!templateEnabledService.isSystemOnly()) {
-			File sharedConf = new File(ConfigHelper.getSharedFolder(), templateEnabledService.getTemplateFolder());
+			Path sharedConf = ConfigLocations.Defaults.get().getShared().resolve(templateEnabledService.getTemplateFolder());
 			
-			if(sharedConf.exists()) {
-				paths.add(new PathInfo(sharedConf.toPath()));
+			if(Files.exists(sharedConf)) {
+				paths.add(new PathInfo(sharedConf));
 			}
 			
 			for(ResourcePackage pkg : ConfigHelper.getSharedPackages()) {
@@ -245,18 +245,18 @@ public class TemplateVersionServiceImpl extends AbstractLoggingServiceImpl imple
 			
 			if(!tenant.isSystem()) {
 
-				File tenantConf = new File(ConfigHelper.getTenantsFolder(), tenant.getDomain());
-				File templateConf = new File(tenantConf, templateEnabledService.getTemplateFolder());
-				if(templateConf.exists()) {
-					paths.add(new PathInfo(templateConf.toPath()));
+				Path tenantConf = ConfigLocations.Defaults.get().getTenant(tenant);
+				Path templateConf = tenantConf.resolve(templateEnabledService.getTemplateFolder());
+				if(Files.exists(templateConf)) {
+					paths.add(new PathInfo(templateConf));
 				}
 				for(ResourcePackage pkg : ConfigHelper.getTenantPackages(tenant)) {
 					paths.add(new PathInfo(pkg, templateEnabledService.getTemplateFolder()));
 				}
 			} else {
-				File prvConf = new File(ConfigHelper.getSystemPrivateFolder(), templateEnabledService.getTemplateFolder());
-				if(prvConf.exists()) {
-					paths.add(new PathInfo(prvConf.toPath()));
+				Path prvConf = ConfigLocations.Defaults.get().getPrivateResources().resolve(templateEnabledService.getTemplateFolder());
+				if(Files.exists(prvConf)) {
+					paths.add(new PathInfo(prvConf));
 				}
 				for(ResourcePackage pkg : ConfigHelper.getSystemPrivatePackages()) {
 					paths.add(new PathInfo(pkg, templateEnabledService.getTemplateFolder()));
@@ -266,9 +266,9 @@ public class TemplateVersionServiceImpl extends AbstractLoggingServiceImpl imple
 			}
 			
 		} else {
-			File systemConf = ConfigHelper.getSystemSubFolder(templateEnabledService.getTemplateFolder());
-			if(systemConf.exists()) {
-				paths.add(new PathInfo(systemConf.toPath()));
+			Path systemConf = ConfigLocations.Defaults.get().getSystem().resolve(templateEnabledService.getTemplateFolder());
+			if(Files.exists(systemConf)) {
+				paths.add(new PathInfo(systemConf));
 			}
 			for(ResourcePackage pkg : ConfigHelper.getTenantPackages(tenant)) {
 				paths.add(new PathInfo(pkg, templateEnabledService.getTemplateFolder()));

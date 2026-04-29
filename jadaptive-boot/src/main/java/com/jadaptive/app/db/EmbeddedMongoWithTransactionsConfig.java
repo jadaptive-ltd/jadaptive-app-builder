@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import com.jadaptive.api.app.ApplicationProperties;
+import com.jadaptive.api.app.ConfigLocations;
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
@@ -53,7 +54,7 @@ public class EmbeddedMongoWithTransactionsConfig {
     private String mReplicaSetName = DFLT_REPLICASET_NAME;
     //private long mStopTimeoutMillis = DFLT_STOP_TIMEOUT_MILLIS;
 
-    File databasePath = new File(System.getProperty("user.dir"), "db");
+    File databasePath = ConfigLocations.Defaults.get().getDb().toFile();
 
     @Bean
     @Primary

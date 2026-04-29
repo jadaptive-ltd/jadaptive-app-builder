@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyManagementException;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -28,6 +29,7 @@ import org.springframework.core.env.Environment;
 
 import com.jadaptive.api.app.ApplicationProperties;
 import com.jadaptive.api.app.ApplicationVersion;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.x509.MismatchedCertificateException;
 import com.jadaptive.api.x509.X509CertificateUtils;
 
@@ -35,30 +37,22 @@ import com.jadaptive.api.x509.X509CertificateUtils;
 @EnableCaching
 public class Application {
 
-	private static Logger log = LoggerFactory.getLogger(Application.class);
+	private static Logger log;
 	
 	public static void main(String[] args) {
-		 
-		 //PropertyConfigurator.configure("conf/app-logging.properties");
+
+		/* ConfigLocations must be resolved before logging is initialized, as system
+		 * properties may be used in logging configuration.
+		 */
+		 ConfigLocations defCfg = ConfigLocations.Defaults.get();
+		 log = LoggerFactory.getLogger(Application.class);
 		 
 		 System.setProperty("spring.main.allow-circular-references", "true");
 		 System.setProperty("spring.mongodb.embedded.version", "4.4.13");
 		 
-		 File pluginsFolder = new File("plugins");
-
-		 if(pluginsFolder.exists()) {
-			 try(var str = Files.newDirectoryStream(pluginsFolder.toPath(), f -> Files.isDirectory(f))) {
-				 for(var path : str) {
-					 var zipFile = path.getParent().resolve(path.getFileName().toString() + ".zip");
-					 if(!Files.exists(zipFile)) {
-						 FileUtils.deleteQuietly(zipFile.toFile());
-					 }
-				 }
-			 }
-			 catch(IOException ioe) {
-				 throw new UncheckedIOException(ioe);
-			 }
-		 }
+		 ;
+		 cleanUpPlugins(defCfg.getBasePlugins());
+		 cleanUpPlugins(defCfg.getUserPlugins());
 		 
 		 try {
 			checkDefaultCertificate();
@@ -95,6 +89,22 @@ public class Application {
 				}
 			 }
 		}
+	}
+
+	private static void cleanUpPlugins(Path pluginsFolder) {
+		if(Files.exists(pluginsFolder)) {
+			 try(var str = Files.newDirectoryStream(pluginsFolder, f -> Files.isDirectory(f))) {
+				 for(var path : str) {
+					 var zipFile = path.getParent().resolve(path.getFileName().toString() + ".zip");
+					 if(!Files.exists(zipFile)) {
+						 FileUtils.deleteQuietly(path.toFile());
+					 }
+				 }
+			 }
+			 catch(IOException ioe) {
+				 throw new UncheckedIOException(ioe);
+			 }
+		 }
 	}
 	
 	private static void checkDefaultCertificate() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, MismatchedCertificateException, KeyManagementException, UnrecoverableKeyException {

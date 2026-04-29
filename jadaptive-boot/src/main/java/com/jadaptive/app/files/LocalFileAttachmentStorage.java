@@ -1,12 +1,13 @@
 package com.jadaptive.app.files;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -16,7 +17,7 @@ import org.apache.tomcat.util.buf.HexUtils;
 import org.pf4j.Extension;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.jadaptive.api.app.ApplicationProperties;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.db.SystemOnlyObjectDatabase;
 import com.jadaptive.api.db.TenantAwareObjectDatabase;
 import com.jadaptive.api.files.FileAttachment;
@@ -28,8 +29,8 @@ public class LocalFileAttachmentStorage implements FileAttachmentStorage {
 
 	public static final String UUID = "b908313d-be99-446c-966e-89107b3901ca";
 	
-	public static final File LOCATION = new File(ApplicationProperties.getConfdFolder(), "attachments");
-	public static final File FILES = new File(ApplicationProperties.getConfdFolder(), "files");
+	public static final Path LOCATION = ConfigLocations.Defaults.get().getDropInConfig().resolve("attachments");
+	public static final Path FILES = ConfigLocations.Defaults.get().getDropInConfig().resolve("files");
 	
 	@Autowired
 	private SystemOnlyObjectDatabase<FileStorageProvider> providerDatabase;
@@ -38,7 +39,11 @@ public class LocalFileAttachmentStorage implements FileAttachmentStorage {
 	private TenantAwareObjectDatabase<FileAttachment> attachmentDatabase;
 	
 	static {
-		LOCATION.mkdirs();
+		try {
+			Files.createDirectories(LOCATION);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 	
 	@Override
@@ -48,7 +53,13 @@ public class LocalFileAttachmentStorage implements FileAttachmentStorage {
 
 	@Override
 	public InputStream getAttachmentContent(String attachmentUUID) throws FileNotFoundException {
-		return new FileInputStream(new File(LOCATION, attachmentUUID));
+		try {
+			return Files.newInputStream(LOCATION.resolve(attachmentUUID));
+		} catch(NoSuchFileException nsfe) {
+			throw new FileNotFoundException(nsfe.getFile());
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	@Override
@@ -68,8 +79,8 @@ public class LocalFileAttachmentStorage implements FileAttachmentStorage {
 		attachment.setFormVariable(formVariable);
 		attachment.setAttachedTo(template);
 		
-		File file = new File(LOCATION, uuid);
-		try(FileOutputStream fout = new FileOutputStream(file)) {
+		Path file = LOCATION.resolve(uuid);
+		try(OutputStream fout = Files.newOutputStream(file)) {
 			try(DigestOutputStream out = new DigestOutputStream(fout, MessageDigest.getInstance("MD5"))) {
 				attachment.setSize(IOUtils.copy(in, out, 65535));
 				attachment.setHash(HexUtils.toHexString(out.getMessageDigest().digest()));
@@ -91,18 +102,17 @@ public class LocalFileAttachmentStorage implements FileAttachmentStorage {
 
 	@Override
 	public InputStream getInputstream(String path) throws IOException {
-		return new FileInputStream(new File(FILES, path));
+		return Files.newInputStream(FILES.resolve(path));
 	}
 
 	@Override
 	public OutputStream getOutputStream(String path, String contentType) throws IOException {
-		return  new FileOutputStream(new File(FILES, path));
+		return Files.newOutputStream(FILES.resolve(path));
 	}
 
 	@Override
 	public void deleteAttachment(FileAttachment object) throws IOException {
-		new File(LOCATION, object.getUuid()).delete();
-		
+		Files.deleteIfExists(LOCATION.resolve(object.getUuid()));
 	}
 
 }

@@ -6,8 +6,8 @@
         </Property>
     </Properties>
     <Appenders>
-		<RollingFile name="FileAppender" fileName="logs/application.log"
-		         filePattern="logs/application.log.%i.gz">
+		<RollingFile name="FileAppender" fileName="${sys:jadaptive.logs}/application.log"
+		         filePattern="${sys:jadaptive.logs}/application.log.%i.gz">
 		    <PatternLayout>
 		        <Pattern>${LOG_PATTERN}</Pattern>
 		    </PatternLayout>

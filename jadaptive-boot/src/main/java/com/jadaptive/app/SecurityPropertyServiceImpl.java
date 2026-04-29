@@ -1,9 +1,6 @@
 package com.jadaptive.app;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,6 +25,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 
 import com.jadaptive.api.app.ConfigHelper;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.app.ResourcePackage;
 import com.jadaptive.api.app.SecurityPropertyService;
 import com.jadaptive.api.app.SecurityScope;
@@ -69,7 +67,7 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 				
 			    try {
 					securityProperties.addAll(resolveSecurityFiles(resourceUri, 
-							ConfigHelper.getTenantSubFolder(tenant, "webapp"),
+							ConfigLocations.Defaults.get().getTenant(tenant).resolve("webapp"),
 							ConfigHelper.getTenantPackages(tenant), uriOnly));
 				} catch (IOException e) {
 					log.error("Failed to read security properties of tenant packages", e);
@@ -79,7 +77,7 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 				
 				try {
 					securityProperties.addAll(resolveSecurityFiles(resourceUri, 
-							ConfigHelper.getSystemPrivateSubFolder("webapp"),
+							ConfigLocations.Defaults.get().getPrivateResources().resolve("webapp"),
 							ConfigHelper.getSystemPrivatePackages(), uriOnly));
 				} catch (IOException e) {
 					log.error("Failed to read security properties of system packages", e);
@@ -89,7 +87,7 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 		
 		try {
 			securityProperties.addAll(resolveSecurityFiles(resourceUri, 
-					ConfigHelper.getSharedSubFolder("webapp"),
+					ConfigLocations.Defaults.get().getShared().resolve("webapp"),
 					ConfigHelper.getSharedPackages(), uriOnly));
 		} catch (IOException e) {
 			log.error("Failed to read security properties of shared packages", e);
@@ -160,7 +158,7 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 		}
 	}
 	
-	private List<Path> resolveSecurityFiles(String resourceUri, File rootFolder, Collection<ResourcePackage> packages, boolean uriOnly) {
+	private List<Path> resolveSecurityFiles(String resourceUri, Path rootFolder, Collection<ResourcePackage> packages, boolean uriOnly) {
 		List<Path> securityProperties = new ArrayList<>();
 		List<String> parentFolders = new ArrayList<>();
 		if(resourceUri.endsWith("/")) {
@@ -173,16 +171,16 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 		
 		for(String parentFolder : parentFolders) {
 			String securityFile = FileUtils.checkEndsWithSlash(parentFolder) + "security.properties";
-			File res = new File(rootFolder, securityFile);
-			if(res.exists()) {
-				securityProperties.add(res.toPath());
-			}
-			String uri = FileUtils.checkEndsWithSlash("webapp") + securityFile;
-			for(ResourcePackage pkg : packages) {
-				if(pkg.containsPath(uri)) {
-					securityProperties.add(pkg.resolvePath(uri));
-				}
-			}
+			Path res = rootFolder.resolve(securityFile);
+			 if(Files.exists(res)) {
+				 securityProperties.add(res);
+			 }
+			 String uri = FileUtils.checkEndsWithSlash("webapp") + securityFile;
+			 for(ResourcePackage pkg : packages) {
+				 if(pkg.containsPath(uri)) {
+					 securityProperties.add(pkg.resolvePath(uri));
+				 }
+			 }
 		}
 		return securityProperties;
 	}
@@ -195,46 +193,46 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 		
 		switch(scope) {
 		case PRIVATE:
-			return getPropertiesForPath(ConfigHelper.getSystemPrivateSubFolder("webapp"), resourceUri);
+			return getPropertiesForPath(ConfigLocations.Defaults.get().getPrivateResources(), resourceUri);
 		case TENANT:
-			return getPropertiesForPath(ConfigHelper.getTenantSubFolder(tenant, "webapp"), resourceUri);
+			return getPropertiesForPath(ConfigLocations.Defaults.get().getTenant(tenant).resolve("webapp"), resourceUri);
 		default:
-			return getPropertiesForPath(ConfigHelper.getSharedSubFolder("webapp"), resourceUri);
+			return getPropertiesForPath(ConfigLocations.Defaults.get().getShared(), resourceUri);
 	}
 }
 	
-	private Properties getPropertiesForPath(File path, String resourceUri) throws IOException {
-		File parentFolder = new File(path, resourceUri);
-		File res = new File(parentFolder, "security.properties");
+	private Properties getPropertiesForPath(Path path, String resourceUri) throws IOException {
+		Path parentFolder = path.resolve(resourceUri);
+		Path res = parentFolder.resolve("security.properties");
 	
 		Properties properties = new Properties();
-		if(res.exists()) {
-			try(InputStream in = new FileInputStream(res)) {
+		if(Files.exists(res)) {
+			try(InputStream in = Files.newInputStream(res)) {
 				properties.load(in);
 			}
 		}
 		return properties;
 	}
 	
-	private void savePropertiesForPath(File path, String resourceUri, Properties newProperties) throws IOException {
+	private void savePropertiesForPath(Path path, String resourceUri, Properties newProperties) throws IOException {
 		
-		File parentFolder = new File(path, resourceUri);
-		File res = new File(parentFolder, "security.properties");
+		Path parentFolder = path.resolve(resourceUri);
+		Path res = parentFolder.resolve("security.properties");
 	
 		Properties properties = new Properties();
-		if(res.exists()) {
-			try(InputStream in = new FileInputStream(res)) {
+		if(Files.exists(res)) {
+			try(InputStream in = Files.newInputStream(res)) {
 				properties.load(in);
 			}
 		}
 		properties.putAll(newProperties);
 		
-		if(!res.exists()) {
-			res.getParentFile().mkdirs();
-			res.createNewFile();
+		if(!Files.exists(res)) {
+			Files.createDirectories(res.getParent());
+			Files.createFile(res);
 		}
 		
-		try(OutputStream out = new FileOutputStream(res)) {
+		try(OutputStream out = Files.newOutputStream(res)) {
 			properties.store(out, "");
 		}
 	}
@@ -248,13 +246,13 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 		
 		switch(scope) {
 		case PRIVATE:
-			savePropertiesForPath(ConfigHelper.getSystemPrivateSubFolder("webapp"), resourceUri, properties);
+			savePropertiesForPath(ConfigLocations.Defaults.get().getPrivateResources().resolve("webapp"), resourceUri, properties);
 			break;
 		case TENANT:
-			savePropertiesForPath(ConfigHelper.getTenantSubFolder(tenant, "webapp"), resourceUri, properties);
+			savePropertiesForPath(ConfigLocations.Defaults.get().getTenant(tenant).resolve("webapp"), resourceUri, properties);
 			break;
 		default:
-			savePropertiesForPath(ConfigHelper.getSharedSubFolder("webapp"), resourceUri, properties);
+			savePropertiesForPath(ConfigLocations.Defaults.get().getShared().resolve("webapp"), resourceUri, properties);
 			break;
 		}
 	}
@@ -263,31 +261,31 @@ public class SecurityPropertyServiceImpl implements SecurityPropertyService {
 	public void deleteProperty(SecurityScope scope, String resourceUri, String key) throws IOException {
 		
 		Tenant tenant = tenantService.getCurrentTenant();
-		File parentFolder;
+		Path parentFolder;
 		
 		switch(scope) {
 		case PRIVATE:
-			parentFolder = new File(ConfigHelper.getSystemPrivateSubFolder("webapp"), resourceUri);
+			parentFolder = ConfigLocations.Defaults.get().getPrivateResources().resolve("webapp").resolve(resourceUri);
 			break;
 		case TENANT:
-			parentFolder = new File(ConfigHelper.getTenantSubFolder(tenant, "webapp"), resourceUri);
+			parentFolder = ConfigLocations.Defaults.get().getTenant(tenant).resolve("webapp").resolve(resourceUri);
 			break;
 		default:
-			parentFolder = new File(ConfigHelper.getSharedSubFolder("webapp"), resourceUri);
+			parentFolder = ConfigLocations.Defaults.get().getShared().resolve("webapp").resolve(resourceUri);
 			break;
 		}
 		
-		File res = new File(parentFolder, "security.properties");
+		Path res = parentFolder.resolve("security.properties");
 	
 		Properties properties = new Properties();
-		if(res.exists()) {
-			try(InputStream in = new FileInputStream(res)) {
+		if(Files.exists(res)) {
+			try(InputStream in = Files.newInputStream(res)) {
 				properties.load(in);
 			}
 		}
 		properties.remove(key);
 		
-		try(OutputStream out = new FileOutputStream(res)) {
+		try(OutputStream out = Files.newOutputStream(res)) {
 			properties.store(out, "");
 		}
 		

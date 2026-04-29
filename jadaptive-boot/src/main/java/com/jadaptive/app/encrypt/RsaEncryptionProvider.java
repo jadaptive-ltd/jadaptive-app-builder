@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyFactory;
@@ -22,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.jadaptive.api.app.ApplicationProperties;
+import com.jadaptive.api.app.ConfigLocations;
 
 @Component
 public class RsaEncryptionProvider extends AbstractEncryptionProvider {
@@ -45,8 +45,7 @@ public class RsaEncryptionProvider extends AbstractEncryptionProvider {
 			throw new IllegalArgumentException("Local private key disabled.");
 		}
 		
-		privateFolder = Paths.get(ApplicationProperties.getValue("private.dir", "conf")).
-				resolve(ApplicationProperties.getValue("private.conf", "private"));
+		privateFolder = ConfigLocations.Defaults.get().getPrivateKeys();
 
 		prvFile = privateFolder.resolve(ApplicationProperties.getValue("private.filename", "secrets"));
 		pubFile = privateFolder.resolve(ApplicationProperties.getValue("private.filename", prvFile.getFileName().toString() + ".pub"));

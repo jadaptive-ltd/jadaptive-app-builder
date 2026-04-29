@@ -1,6 +1,5 @@
 package com.jadaptive.app.json;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.jadaptive.api.app.ConfigHelper;
+import com.jadaptive.api.app.ConfigLocations;
 import com.jadaptive.api.app.ResourcePackage;
 import com.jadaptive.api.permissions.ExceptionHandlingController;
 import com.jadaptive.api.session.SessionUtils;
@@ -208,12 +208,12 @@ public class ResourceController extends ExceptionHandlingController {
 			/**
 			 * Process tenant files, then packages
 			 */
-			File res = new File(ConfigHelper.getTenantSubFolder(tenant, "webapp"), resourceUri);
-			if(res.exists()) {
+			Path res = ConfigLocations.Defaults.get().getTenant(tenant).resolve("webapp").resolve(resourceUri);
+			if(Files.exists(res)) {
 				if(log.isDebugEnabled()) {
 					log.debug("Resource {} was found in tenant webapp folder", resourceUri);
 				}
-				return res.toPath();
+				return res;
 			}
 			
 			try {
@@ -234,12 +234,12 @@ public class ResourceController extends ExceptionHandlingController {
 			/**
 			 * Process system files, then packages
 			 */
-			File res = new File(ConfigHelper.getSystemPrivateSubFolder("webapp"), resourceUri);
-			if(res.exists()) {
+			Path res = ConfigLocations.Defaults.get().getPrivateResources().resolve("webapp").resolve(resourceUri);
+			if(Files.exists(res)) {
 				if(log.isDebugEnabled()) {
 					log.debug("Resource {} was found in system private webapp folder", resourceUri);
 				}
-				return res.toPath();
+				return res;
 			}			
 			
 			try {
@@ -256,12 +256,12 @@ public class ResourceController extends ExceptionHandlingController {
 			}
 		}
 		
-		File res = new File(ConfigHelper.getSharedSubFolder("webapp"), resourceUri);
-		if(res.exists()) {
+		Path res = ConfigLocations.Defaults.get().getShared().resolve("webapp").resolve(resourceUri);
+		if(Files.exists(res)) {
 			if(log.isDebugEnabled()) {
 				log.debug("Resource {} was found in system shared webapp folder", resourceUri);
 			}
-			return res.toPath();
+			return res;
 		}
 		
 		try {
@@ -278,22 +278,22 @@ public class ResourceController extends ExceptionHandlingController {
 		}
 
 		try {
-			res = ResourceUtils.getFile("classpath:" + uri);
+			res = ResourceUtils.getFile("classpath:" + uri).toPath();
 			if(log.isDebugEnabled()) {
 				log.debug("Resource {} was found in spring boot resources with relative path", resourceUri);
 			}
-			return res.toPath();
+			return res;
 
 		} catch(FileNotFoundException e) {
 			log.debug("Failed to process spring boot resource for " + uri, e);
 		}
 		
 		try {
-			res = ResourceUtils.getFile("classpath:/" + uri);
+			res = ResourceUtils.getFile("classpath:/" + uri).toPath();
 			if(log.isDebugEnabled()) {
 				log.debug("Resource {} was found in spring boot resources with absolute path", resourceUri);
 			}
-			return res.toPath();
+			return res;
 
 		} catch(FileNotFoundException e) {
 			log.debug("Failed to process spring boot resource for " + uri, e);

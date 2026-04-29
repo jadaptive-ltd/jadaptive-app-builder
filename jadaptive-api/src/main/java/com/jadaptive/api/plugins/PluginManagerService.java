@@ -7,7 +7,7 @@ public interface PluginManagerService {
 	
 	boolean installed(String groupId, String artifactId) throws IOException;
 	
-	Path installOrUpdate(String groupId, String artifactId) throws IOException;
+	Path installOrUpdate(String groupId, String artifactId, boolean baseExtension) throws IOException;
 
 	void setRepository(String url, String username, char[] password);
 
@@ -18,5 +18,9 @@ public interface PluginManagerService {
 		var idx = fname.lastIndexOf('.');
 		return pdir.getParent().resolve(fname.substring(0, idx));
 	}
+
+	String getRepositoryUsername();
+
+	String getRepositoryUrl();
 	
 }
